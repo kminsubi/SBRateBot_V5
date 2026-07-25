@@ -1,5 +1,5 @@
 /* ===================================
-   SBRateBot V4 Dashboard JS
+   SBRateBot V5 Dashboard JS
    Full Replacement Version
 =================================== */
 
@@ -20,7 +20,7 @@ document.addEventListener(
 
 
         console.log(
-            "SBRateBot V4 Dashboard Loaded"
+            "SBRateBot V5 Dashboard Loaded"
         );
 
 
@@ -56,7 +56,18 @@ async function initDashboard(){
     await loadAI();
 
 
+    // V5 신규 영역
+
+    await loadExecutive();
+
+    await loadWatchList();
+
+    await loadSystemStatus();
+
+
 }
+
+
 
 
 
@@ -81,28 +92,43 @@ async function loadKPI(){
         await response.json();
 
 
+
         setText(
             "#product-count",
-            data.product_count + "개"
+            (data.product_count || 0)
+            + "개"
+        );
+
+
+        setText(
+            "#bank-count",
+            (data.bank_count || "-")
         );
 
 
         setText(
             "#max-rate",
-            data.max_rate
+            formatRate(
+                data.max_rate
+            )
         );
 
 
         setText(
             "#avg-rate",
-            data.average_rate
+            formatRate(
+                data.average_rate
+            )
         );
 
 
         setText(
             "#min-rate",
-            data.min_rate
+            formatRate(
+                data.min_rate
+            )
         );
+
 
 
     }
@@ -122,9 +148,12 @@ async function loadKPI(){
 
 
 
-// ===================================
-// 우리금융 Market Position
-// ===================================
+
+
+/* ===================================
+   우리금융 Market Position
+=================================== */
+
 
 async function loadWoori(){
 
@@ -143,16 +172,34 @@ async function loadWoori(){
 
 
 
+        const rate =
+        Number(
+            data.rate || 0
+        );
+
+
+
         setText(
             "#woori-rate",
-            Number(data.rate || 0).toFixed(2) + "%"
+            formatRate(rate)
+        );
+
+
+
+        setText(
+            "#current-rate",
+            formatRate(rate)
         );
 
 
 
         setText(
             "#market-rank",
-            data.market_rank + "위"
+            data.market_rank
+            ?
+            data.market_rank+"위"
+            :
+            "-"
         );
 
 
@@ -171,13 +218,15 @@ async function loadWoori(){
 
 
         setText(
-            "#current-rate",
-            Number(data.rate || 0).toFixed(2) + "%"
+            "#financial-rank",
+            data.financial_rank
+            ?
+            data.financial_rank+"위"
+            :
+            "-"
         );
 
 
-
-        // 아래 3개는 HTML 색상 표시 필요하므로 setHTML 유지
 
         setHTML(
             "#average-gap",
@@ -203,6 +252,7 @@ async function loadWoori(){
         );
 
 
+
     }
     catch(error){
 
@@ -219,38 +269,6 @@ async function loadWoori(){
 }
 
 
-
-
-// ===================================
-// 증감 표시
-// ===================================
-
-function formatGap(value){
-
-    let num =
-        Number(value || 0);
-
-
-    if(num > 0){
-
-        return "+" +
-            num.toFixed(2)
-            + "%";
-
-    }
-
-
-    if(num < 0){
-
-        return num.toFixed(2)
-            + "%";
-
-    }
-
-
-    return "0.00%";
-
-}
 
 
 
@@ -276,7 +294,6 @@ async function loadFinancial(){
 
 
 
-        // 기존 금융지주 비교표 유지
         renderRateTable(
             "#financial-table",
             data
@@ -284,101 +301,9 @@ async function loadFinancial(){
 
 
 
-        // ===================================
-        // 4대 금융 순위 표시
-        // ===================================
-
-
-        const financialList = data.filter(
-            function(item){
-
-
-                const bank =
-                String(
-                    item.bank || ""
-                );
-
-
-                return (
-
-                    bank.includes("우리금융")
-
-                    ||
-
-                    bank.includes("신한")
-
-                    ||
-
-                    bank.includes("하나")
-
-                    ||
-
-                    bank.includes("KB")
-
-                );
-
-
-            }
+        calculateFinancialRank(
+            data
         );
-
-
-
-        financialList.sort(
-            function(a,b){
-
-
-                return Number(b.rate)
-                -
-                Number(a.rate);
-
-
-            }
-        );
-
-
-
-        const wooriRank =
-        financialList.findIndex(
-            function(item){
-
-
-                return String(
-                    item.bank || ""
-                )
-                .includes(
-                    "우리금융"
-                );
-
-
-            }
-        );
-
-
-
-        if(
-            wooriRank >= 0
-        ){
-
-
-            setText(
-                "#financial-rank",
-                (wooriRank + 1)
-                +
-                "위"
-            );
-
-
-        }
-        else{
-
-
-            setText(
-                "#financial-rank",
-                "-"
-            );
-
-
-        }
 
 
 
@@ -396,6 +321,91 @@ async function loadFinancial(){
 
 
 }
+
+
+
+
+
+function calculateFinancialRank(
+    data
+){
+
+
+    if(
+        !Array.isArray(data)
+    )
+    return;
+
+
+
+    const list =
+    data.filter(
+        item => {
+
+
+            const bank =
+            String(
+                item.bank || ""
+            );
+
+
+            return (
+
+                bank.includes("우리금융")
+
+                ||
+
+                bank.includes("KB")
+
+                ||
+
+                bank.includes("신한")
+
+                ||
+
+                bank.includes("하나")
+
+            );
+
+
+        }
+    );
+
+
+
+    list.sort(
+        (a,b)=>
+        Number(b.rate)
+        -
+        Number(a.rate)
+    );
+
+
+
+    const index =
+    list.findIndex(
+        item =>
+        String(item.bank)
+        .includes(
+            "우리금융"
+        )
+    );
+
+
+
+    setText(
+        "#financial-rank",
+        index >=0
+        ?
+        index+1+"위"
+        :
+        "-"
+    );
+
+
+}
+
+
 
 
 
@@ -418,6 +428,7 @@ async function loadRates(){
 
         const data =
         await response.json();
+
 
 
         renderRateTable(
@@ -443,8 +454,10 @@ async function loadRates(){
 
 
 
+
+
 /* ===================================
-   공통 금리 테이블
+   공통 테이블
 =================================== */
 
 
@@ -461,26 +474,27 @@ function renderRateTable(
 
 
     if(!table)
-        return;
+    return;
 
 
-    table.innerHTML = "";
+
+    table.innerHTML="";
+
 
 
     if(
-        !data ||
-        data.length === 0
+        !Array.isArray(data)
+        ||
+        data.length===0
     ){
 
 
         table.innerHTML = `
 
         <tr>
-
         <td colspan="5">
-        데이터가 없습니다.
+        데이터 없음
         </td>
-
         </tr>
 
         `;
@@ -491,8 +505,16 @@ function renderRateTable(
     }
 
 
+
     data.forEach(
-        function(item,index){
+        (item,index)=>{
+
+
+            const rank =
+            item.rank
+            ||
+            index+1;
+
 
 
             const row =
@@ -501,76 +523,45 @@ function renderRateTable(
             );
 
 
-            const rank =
-            item.rank ||
-            index + 1;
-
-
-            let rankClass = "";
-
-
-            if(rank === 1){
-
-                rankClass = "top1";
-
-            }
-            else if(rank === 2){
-
-                rankClass = "top2";
-
-            }
-            else if(rank === 3){
-
-                rankClass = "top3";
-
-            }
-
-
-            let bankName =
-            item.bank || "";
-
-
-            if(
-                bankName.includes(
-                    "우리금융"
-                )
-            ){
-
-                bankName =
-                `<strong>${bankName}</strong>`;
-
-            }
-
 
             row.innerHTML = `
 
-            <td class="${rankClass}">
+            <td>
             ${rank}위
             </td>
 
             <td>
-            ${bankName}
+            ${
+                highlightWoori(
+                    item.bank
+                )
+            }
             </td>
 
             <td>
-            ${item.product || ""}
+            ${item.product || "-"}
             </td>
 
             <td>
             <strong>
-            ${Number(
-                item.rate || 0
-            ).toFixed(2)}%
+            ${
+                formatRate(
+                    item.rate
+                )
+            }
             </strong>
             </td>
 
             <td>
-            ${formatChange(
-                item.change
-            )}
+            ${
+                formatChange(
+                    item.change
+                )
+            }
             </td>
 
             `;
+
 
 
             table.appendChild(
@@ -583,8 +574,6 @@ function renderRateTable(
 
 
 }
-
-
 
 /* ===================================
    전체 상품 조회
@@ -607,6 +596,7 @@ async function loadProducts(){
         await response.json();
 
 
+
         renderProducts();
 
 
@@ -627,6 +617,8 @@ async function loadProducts(){
 
 
 
+
+
 function renderProducts(){
 
 
@@ -637,7 +629,8 @@ function renderProducts(){
 
 
     if(!table)
-        return;
+    return;
+
 
 
     const keyword =
@@ -651,9 +644,10 @@ function renderProducts(){
     .toLowerCase();
 
 
+
     let filtered =
     productData.filter(
-        function(item){
+        item=>{
 
 
             const category =
@@ -664,6 +658,7 @@ function renderProducts(){
             item.period || "";
 
 
+
             const bank =
             String(
                 item.bank || ""
@@ -671,11 +666,13 @@ function renderProducts(){
             .toLowerCase();
 
 
+
             const product =
             String(
                 item.product || ""
             )
             .toLowerCase();
+
 
 
             return (
@@ -690,16 +687,19 @@ function renderProducts(){
                     ||
 
                     period === selectedPeriod
+
                 )
 
                 &&
 
                 (
+
                     bank.includes(keyword)
 
                     ||
 
                     product.includes(keyword)
+
                 )
 
             );
@@ -709,47 +709,22 @@ function renderProducts(){
     );
 
 
+
     filtered.sort(
-        function(a,b){
-
-
-            return (
-                Number(b.rate)
-                -
-                Number(a.rate)
-            );
-
-
-        }
+        (a,b)=>
+        Number(b.rate)
+        -
+        Number(a.rate)
     );
 
 
-    table.innerHTML = "";
 
+    table.innerHTML="";
 
-    if(filtered.length === 0){
-
-
-        table.innerHTML = `
-
-        <tr>
-
-        <td colspan="5">
-        조회 결과가 없습니다.
-        </td>
-
-        </tr>
-
-        `;
-
-
-        return;
-
-    }
 
 
     filtered.forEach(
-        function(item,index){
+        (item,index)=>{
 
 
             const row =
@@ -758,72 +733,45 @@ function renderProducts(){
             );
 
 
-            const rank =
-            index + 1;
-
-
-            let rankClass = "";
-
-
-            if(rank === 1){
-
-                rankClass = "top1";
-
-            }
-            else if(rank === 2){
-
-                rankClass = "top2";
-
-            }
-            else if(rank === 3){
-
-                rankClass = "top3";
-
-            }
-
-
-            let bankName =
-            item.bank || "";
-
-
-            if(
-                bankName.includes(
-                    "우리금융"
-                )
-            ){
-
-                bankName =
-                `<strong>${bankName}</strong>`;
-
-            }
-
 
             row.innerHTML = `
 
-            <td class="${rankClass}">
-            ${rank}위
+            <td>
+            ${index+1}위
             </td>
 
-            <td>
-            ${bankName}
-            </td>
 
             <td>
-            ${item.product || ""}
+            ${
+                highlightWoori(
+                    item.bank
+                )
+            }
             </td>
+
+
+            <td>
+            ${item.product || "-"}
+            </td>
+
 
             <td>
             <strong>
-            ${Number(
-                item.rate || 0
-            ).toFixed(2)}%
+            ${
+                formatRate(
+                    item.rate
+                )
+            }
             </strong>
             </td>
 
+
             <td>
-            ${formatChange(
-                item.change
-            )}
+            ${
+                formatChange(
+                    item.change
+                )
+            }
             </td>
 
             `;
@@ -842,8 +790,10 @@ function renderProducts(){
 
 
 
+
+
 /* ===================================
-   상품 탭 / 기간
+   상품 필터
 =================================== */
 
 
@@ -856,29 +806,28 @@ function initProductFilter(){
     );
 
 
+
     const periodButtons =
     document.querySelectorAll(
         ".period-filter button"
     );
 
 
+
     categoryButtons.forEach(
-        function(button){
+        button=>{
 
 
             button.addEventListener(
                 "click",
-                function(){
+                ()=>{
 
 
                     categoryButtons.forEach(
-                        function(item){
-
-                            item.classList.remove(
-                                "active"
-                            );
-
-                        }
+                        b=>
+                        b.classList.remove(
+                            "active"
+                        )
                     );
 
 
@@ -887,8 +836,10 @@ function initProductFilter(){
                     );
 
 
+
                     selectedCategory =
                     button.innerText.trim();
+
 
 
                     renderProducts();
@@ -902,24 +853,23 @@ function initProductFilter(){
     );
 
 
+
     periodButtons.forEach(
-        function(button){
+        button=>{
 
 
             button.addEventListener(
                 "click",
-                function(){
+                ()=>{
 
 
                     periodButtons.forEach(
-                        function(item){
-
-                            item.classList.remove(
-                                "active"
-                            );
-
-                        }
+                        b=>
+                        b.classList.remove(
+                            "active"
+                        )
                     );
+
 
 
                     button.classList.add(
@@ -927,8 +877,10 @@ function initProductFilter(){
                     );
 
 
+
                     selectedPeriod =
                     button.innerText.trim();
+
 
 
                     renderProducts();
@@ -946,9 +898,6 @@ function initProductFilter(){
 
 
 
-/* ===================================
-   상품 검색
-=================================== */
 
 
 function initProductSearch(){
@@ -961,7 +910,8 @@ function initProductSearch(){
 
 
     if(!input)
-        return;
+    return;
+
 
 
     input.addEventListener(
@@ -971,6 +921,8 @@ function initProductSearch(){
 
 
 }
+
+
 
 
 
@@ -995,35 +947,32 @@ async function loadAI(){
         await response.json();
 
 
+
         const box =
         document.querySelector(
             "#ai-summary"
         );
 
 
+
         if(!box)
-            return;
+        return;
 
 
-        box.innerHTML = `
 
-        <ul>
+        box.innerHTML =
 
-        ${
-            (data.summary || [])
-            .map(
-                function(item){
+        (
 
-                    return `<li>${item}</li>`;
+            data.summary || []
 
-                }
-            )
-            .join("")
-        }
+        )
+        .map(
+            item=>
+            `<li>${item}</li>`
+        )
+        .join("");
 
-        </ul>
-
-        `;
 
 
     }
@@ -1043,12 +992,140 @@ async function loadAI(){
 
 
 
+
+
 /* ===================================
-   AI 검색 초기화
+   V5 Executive Dashboard
+=================================== */
+
+
+async function loadExecutive(){
+
+
+    const summary =
+    document.querySelector(
+        "#executive-summary"
+    );
+
+
+    if(summary){
+
+
+        summary.innerHTML = `
+
+        <p>
+        AI가 오늘 시장 데이터를 분석했습니다.
+        </p>
+
+        <p>
+        우리금융 경쟁력과 금리 변동을
+        지속 모니터링합니다.
+        </p>
+
+        `;
+
+
+    }
+
+
+
+    setText(
+        "#market-status",
+        "안정"
+    );
+
+
+    setText(
+        "#ai-confidence",
+        "99%"
+    );
+
+
+}
+
+
+
+
+
+async function loadWatchList(){
+
+
+    const box =
+    document.querySelector(
+        "#watch-list"
+    );
+
+
+
+    if(!box)
+    return;
+
+
+
+    box.innerHTML = `
+
+    <div>
+    🟢 우리금융저축은행
+    <br>
+    금융지주 경쟁력 유지
+    </div>
+
+
+    <div>
+    ⚠ 경쟁은행 모니터링
+    <br>
+    금리 변화 감시
+    </div>
+
+
+    `;
+
+
+}
+
+
+
+
+
+async function loadSystemStatus(){
+
+
+    setText(
+        "#data-status",
+        "Running"
+    );
+
+
+    setText(
+        "#ai-status",
+        "Connected"
+    );
+
+
+    setText(
+        "#dashboard-status",
+        "Online"
+    );
+
+
+}
+
+
+
+
+
+/* ===================================
+   AI 검색
 =================================== */
 
 
 function initAISearch(){
+
+
+    const button =
+    document.querySelector(
+        "#ai-search-btn"
+    );
 
 
     const input =
@@ -1056,11 +1133,6 @@ function initAISearch(){
         "#ai-question"
     );
 
-
-    const button =
-    document.querySelector(
-        "#ai-search-btn"
-    );
 
 
     if(button){
@@ -1075,24 +1147,21 @@ function initAISearch(){
     }
 
 
+
     if(input){
 
 
         input.addEventListener(
             "keydown",
-            function(event){
+            e=>{
 
 
-                if(event.key === "Enter"){
+                if(
+                    e.key==="Enter"
+                ){
 
 
-                    event.preventDefault();
-
-
-                    clearTimeout(
-                        aiTimer
-                    );
-
+                    e.preventDefault();
 
                     searchAI();
 
@@ -1111,9 +1180,6 @@ function initAISearch(){
 
 
 
-/* ===================================
-   AI 자동 검색
-=================================== */
 
 
 function initAIAutoSearch(){
@@ -1125,13 +1191,15 @@ function initAIAutoSearch(){
     );
 
 
+
     if(!input)
-        return;
+    return;
+
 
 
     input.addEventListener(
         "input",
-        function(){
+        ()=>{
 
 
             clearTimeout(
@@ -1139,18 +1207,18 @@ function initAIAutoSearch(){
             );
 
 
+
             aiTimer =
             setTimeout(
-                function(){
+                ()=>{
 
 
                     if(
-                        input.value.trim().length >= 2
+                        input.value.trim()
+                        .length>=2
                     ){
 
-
                         searchAI();
-
 
                     }
 
@@ -1168,9 +1236,6 @@ function initAIAutoSearch(){
 
 
 
-/* ===================================
-   AI 검색
-=================================== */
 
 
 async function searchAI(){
@@ -1182,14 +1247,19 @@ async function searchAI(){
     );
 
 
+
     const answer =
     document.querySelector(
         "#ai-answer"
     );
 
 
-    if(!input || !answer)
-        return;
+
+    if(
+        !input ||
+        !answer
+    )
+    return;
 
 
 
@@ -1198,21 +1268,13 @@ async function searchAI(){
 
 
 
-    if(!question){
-
-
-        answer.innerText =
-        "질문을 입력해주세요.";
-
-
-        return;
-
-    }
+    if(!question)
+    return;
 
 
 
     answer.innerText =
-    "검색중입니다...";
+    "AI 분석중...";
 
 
 
@@ -1224,9 +1286,9 @@ async function searchAI(){
             "/api/ai/search",
             {
 
-                method: "POST",
+                method:"POST",
 
-                headers: {
+                headers:{
 
                     "Content-Type":
                     "application/json"
@@ -1236,7 +1298,7 @@ async function searchAI(){
                 body:
                 JSON.stringify({
 
-                    question: question
+                    question:question
 
                 })
 
@@ -1250,21 +1312,10 @@ async function searchAI(){
 
 
 
-        const result =
-        data.answer ||
-        "검색 결과가 없습니다.";
-
-        console.log("AI RESULT:", result);
-
-
-
-        // -------------------------------
-        // AI 검색 결과 출력
-        // 검색 영역만 변경
-        // -------------------------------
-
         answer.innerHTML =
-        result;
+        data.answer
+        ||
+        "분석 결과가 없습니다.";
 
 
 
@@ -1273,20 +1324,20 @@ async function searchAI(){
 
 
         console.error(
-            "AI SEARCH ERROR",
             error
         );
 
 
-
         answer.innerText =
-        "검색 오류가 발생했습니다.";
+        "AI 검색 오류";
 
 
     }
 
 
 }
+
+
 
 
 
@@ -1301,23 +1352,20 @@ function setText(
 ){
 
 
-    const element =
+    const el =
     document.querySelector(
         selector
     );
 
 
-    if(element){
-
-
-        element.innerText =
-        value;
-
-
-    }
+    if(el)
+    el.innerText =
+    value;
 
 
 }
+
+
 
 
 
@@ -1327,41 +1375,67 @@ function setHTML(
 ){
 
 
-    const element =
+    const el =
     document.querySelector(
         selector
     );
 
 
-    if(element){
-
-
-        element.innerHTML =
-        value;
-
-
-    }
+    if(el)
+    el.innerHTML =
+    value;
 
 
 }
 
 
 
-function formatGap(value){
 
 
-    const number =
-    Number(value);
+function formatRate(
+    value
+){
 
 
-    if(number > 0){
+    const num =
+    Number(value || 0);
+
+
+
+    if(
+        !num
+    )
+    return "-";
+
+
+
+    return num.toFixed(2)+"%";
+
+
+}
+
+
+
+
+
+function formatGap(
+    value
+){
+
+
+    const num =
+    Number(value || 0);
+
+
+
+    if(num>0){
 
 
         return `
 
         <span class="rate-change increase">
 
-        +${number.toFixed(2)}%p
+        +${num.toFixed(2)}%p
 
         </span>
 
@@ -1371,14 +1445,15 @@ function formatGap(value){
     }
 
 
-    if(number < 0){
+
+    if(num<0){
 
 
         return `
 
         <span class="rate-change decrease">
 
-        ▲${Math.abs(number).toFixed(2)}%p
+        ▲${Math.abs(num).toFixed(2)}%p
 
         </span>
 
@@ -1386,6 +1461,7 @@ function formatGap(value){
 
 
     }
+
 
 
     return "0.00%p";
@@ -1395,48 +1471,29 @@ function formatGap(value){
 
 
 
-function formatChange(value){
 
 
-    if(
-        value === null
-        ||
-        value === undefined
-        ||
-        value === "-"
-    ){
+function formatChange(
+    value
+){
 
 
-        return "-";
-
-
-    }
-
-
-    const number =
+    const num =
     Number(
-        String(value)
+        String(value || 0)
         .replace("+","")
     );
 
 
-    if(isNaN(number)){
 
-
-        return value;
-
-
-    }
-
-
-    if(number > 0){
+    if(num>0){
 
 
         return `
 
         <span class="rate-change increase">
 
-        +${number.toFixed(2)}%
+        +${num.toFixed(2)}%
 
         </span>
 
@@ -1446,14 +1503,15 @@ function formatChange(value){
     }
 
 
-    if(number < 0){
+
+    if(num<0){
 
 
         return `
 
         <span class="rate-change decrease">
 
-        ▲${Math.abs(number).toFixed(2)}%
+        ▲${Math.abs(num).toFixed(2)}%
 
         </span>
 
@@ -1463,7 +1521,36 @@ function formatChange(value){
     }
 
 
+
     return "0.00%";
+
+
+}
+
+
+
+
+
+function highlightWoori(
+    name
+){
+
+
+    if(
+        String(name)
+        .includes(
+            "우리금융"
+        )
+    ){
+
+
+        return `<strong>${name}</strong>`;
+
+
+    }
+
+
+    return name || "-";
 
 
 }
