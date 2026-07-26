@@ -1,12 +1,24 @@
+<!-- =====================================================
+     SBRateBot V5 EXECUTIVE DASHBOARD
+     FINAL REBUILD
+     PART 1/5 START
+===================================================== -->
+
+
 <!DOCTYPE html>
+
 <html lang="ko">
+
 
 <head>
 
+
 <meta charset="UTF-8">
+
 
 <meta name="viewport"
 content="width=device-width, initial-scale=1.0">
+
 
 
 <title>
@@ -16,11 +28,15 @@ content="width=device-width, initial-scale=1.0">
 </title>
 
 
+
 <link rel="stylesheet"
 href="/static/css/dashboard.css">
 
 
+
 </head>
+
+
 
 
 
@@ -28,12 +44,15 @@ href="/static/css/dashboard.css">
 
 
 
+
 <div class="dashboard">
 
 
 
+
+
 <!-- =====================================================
-     V5 EXECUTIVE HEADER
+     EXECUTIVE HEADER
 ===================================================== -->
 
 
@@ -41,11 +60,17 @@ href="/static/css/dashboard.css">
 
 
 
+
+
+
 <div class="header-left">
 
 
 
+
+
 <div class="company-logo">
+
 
 <div class="logo-symbol">
 
@@ -53,13 +78,19 @@ W
 
 </div>
 
+
 </div>
 
 
 
 
 
+
+
+
+
 <div class="header-title">
+
 
 
 <h1>
@@ -70,9 +101,12 @@ W
 
 
 
+
+
 <p>
 
 WOORI SAVINGS BANK
+
 AI Deposit Monitoring System
 
 <span class="version">
@@ -82,15 +116,22 @@ V5
 </span>
 
 
+
 </p>
 
 
 
+
+
 </div>
 
 
 
+
+
 </div>
+
+
 
 
 
@@ -104,19 +145,23 @@ V5
 
 
 
+
 <div class="status-card">
 
 
 <span class="status-dot"></span>
 
 
+
 <div>
+
 
 <label>
 
 SYSTEM
 
 </label>
+
 
 
 <strong>
@@ -126,10 +171,14 @@ LIVE
 </strong>
 
 
+
 </div>
 
 
+
 </div>
+
+
 
 
 
@@ -147,6 +196,7 @@ LAST UPDATE
 </label>
 
 
+
 <strong id="update-time">
 
 -
@@ -154,7 +204,9 @@ LAST UPDATE
 </strong>
 
 
+
 </div>
+
 
 
 
@@ -173,6 +225,7 @@ PRODUCTS
 </label>
 
 
+
 <strong id="product-count">
 
 -
@@ -180,7 +233,9 @@ PRODUCTS
 </strong>
 
 
+
 </div>
+
 
 
 
@@ -199,6 +254,7 @@ BANKS
 </label>
 
 
+
 <strong id="bank-count">
 
 75
@@ -206,13 +262,16 @@ BANKS
 </strong>
 
 
-</div>
-
-
-
-
 
 </div>
+
+
+
+
+
+
+</div>
+
 
 
 
@@ -221,6 +280,35 @@ BANKS
 </header>
 
 
+
+
+
+
+
+
+
+
+
+
+
+<!-- =====================================================
+     V5 TWO COLUMN LAYOUT
+===================================================== -->
+
+
+<div class="v5-layout">
+
+
+
+
+
+
+<!-- =====================================================
+     MAIN DASHBOARD AREA
+===================================================== -->
+
+
+<main class="main-area">
 
 
 
@@ -239,7 +327,11 @@ BANKS
 
 
 
+
+
+
 <div class="hero-card hero-rank">
+
 
 
 <div class="hero-icon">
@@ -250,7 +342,9 @@ BANKS
 
 
 
+
 <div class="hero-body">
+
 
 
 <span>
@@ -261,11 +355,13 @@ BANKS
 
 
 
+
 <strong id="hero-market-rank">
 
 -
 
 </strong>
+
 
 
 
@@ -283,7 +379,12 @@ Market Ranking
 
 
 
+
 </div>
+
+
+
+
 
 
 
@@ -305,6 +406,7 @@ Market Ranking
 
 
 
+
 <div class="hero-body">
 
 
@@ -318,6 +420,7 @@ Market Ranking
 
 
 
+
 <strong id="hero-woori-rate">
 
 -
@@ -327,9 +430,11 @@ Market Ranking
 
 
 
+
 <small>
 
 기준상품
+
 
 <span id="hero-basis-product">
 
@@ -338,16 +443,23 @@ Market Ranking
 </span>
 
 
+
 </small>
 
 
 
 
+
+</div>
+
+
+
+
 </div>
 
 
 
-</div>
+
 
 
 
@@ -369,6 +481,7 @@ Market Ranking
 
 
 
+
 <div class="hero-body">
 
 
@@ -381,11 +494,15 @@ Market Ranking
 
 
 
+
+
 <strong id="hero-average-rate">
 
 -
 
 </strong>
+
+
 
 
 
@@ -397,10 +514,16 @@ Average Rate
 
 
 
+
 </div>
 
 
+
+
 </div>
+
+
+
 
 
 
@@ -422,6 +545,7 @@ Average Rate
 
 
 
+
 <div class="hero-body">
 
 
@@ -434,11 +558,15 @@ Average Rate
 
 
 
+
+
 <strong id="hero-max-rate">
 
 -
 
 </strong>
+
+
 
 
 
@@ -450,10 +578,17 @@ Highest Rate
 
 
 
+
 </div>
 
 
+
+
 </div>
+
+
+
+
 
 
 
@@ -475,6 +610,7 @@ Highest Rate
 
 
 
+
 <div class="hero-body">
 
 
@@ -487,11 +623,15 @@ Highest Rate
 
 
 
+
+
 <strong id="hero-min-rate">
 
 -
 
 </strong>
+
+
 
 
 
@@ -503,10 +643,17 @@ Lowest Rate
 
 
 
+
 </div>
 
 
+
+
 </div>
+
+
+
+
 
 
 
@@ -528,6 +675,7 @@ Lowest Rate
 
 
 
+
 <div class="hero-body">
 
 
@@ -540,11 +688,15 @@ Lowest Rate
 
 
 
+
+
 <strong id="hero-bank-count">
 
 75
 
 </strong>
+
+
 
 
 
@@ -556,7 +708,10 @@ Savings Banks
 
 
 
+
 </div>
+
+
 
 
 </div>
@@ -576,16 +731,14 @@ Savings Banks
 
 
 
+<!-- END PART 1/5 -->
+
 <!-- =====================================================
-     AI COMMAND CENTER
+     AI ASSISTANT
 ===================================================== -->
 
 
-<section class="command-center">
-
-
-
-<div class="assistant-panel">
+<section class="assistant-panel">
 
 
 
@@ -606,11 +759,13 @@ Savings Banks
 
 
 
+
 <p>
 
 AI가 먼저 시장을 분석하고 알려드립니다.
 
 </p>
+
 
 
 
@@ -628,7 +783,9 @@ AI READY
 
 
 
+
 </div>
+
 
 
 
@@ -640,7 +797,9 @@ AI READY
 <div class="assistant-summary">
 
 
+
 <div class="summary-status">
+
 
 
 <span class="status-good">
@@ -648,6 +807,7 @@ AI READY
 ● 정상
 
 </span>
+
 
 
 
@@ -659,7 +819,10 @@ AI READY
 
 
 
+
 </div>
+
+
 
 
 
@@ -676,6 +839,9 @@ class="summary-message">
 
 
 
+
+
+
 </div>
 
 
@@ -685,7 +851,16 @@ class="summary-message">
 
 
 
+
+
+
+
+
 <div class="assistant-today">
+
+
+
+
 
 
 <div class="today-card">
@@ -706,7 +881,13 @@ class="summary-message">
 </strong>
 
 
+
+
 </div>
+
+
+
+
 
 
 
@@ -730,7 +911,13 @@ class="summary-message">
 </strong>
 
 
+
+
 </div>
+
+
+
+
 
 
 
@@ -741,7 +928,9 @@ class="summary-message">
 
 <span>
 
-🆕 신규상품
+🆕
+
+신규상품
 
 </span>
 
@@ -754,10 +943,6 @@ class="summary-message">
 </strong>
 
 
-</div>
-
-
-
 
 
 </div>
@@ -768,21 +953,47 @@ class="summary-message">
 
 
 
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- AI SEARCH -->
 
 
 <div class="assistant-search">
 
 
+
 <input
+
 
 id="ai-question"
 
+
 type="text"
 
-placeholder="AI에게 시장·상품·경쟁사 분석을 물어보세요">
+
+placeholder="AI에게 시장·상품·경쟁사 분석을 물어보세요"
+
+
+
+>
+
+
 
 
 </div>
+
+
 
 
 
@@ -804,7 +1015,9 @@ placeholder="AI에게 시장·상품·경쟁사 분석을 물어보세요">
 "시장 TOP5"
 
 
+
 </div>
+
 
 
 
@@ -817,11 +1030,6 @@ placeholder="AI에게 시장·상품·경쟁사 분석을 물어보세요">
 class="answer-scroll">
 
 
-</div>
-
-
-
-
 
 </div>
 
@@ -829,40 +1037,77 @@ class="answer-scroll">
 
 
 
-<!-- END PART 1/6 -->
+
+
+</section>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 <!-- =====================================================
-     AI ANALYSIS CENTER
+     MARKET BOARD
 ===================================================== -->
 
 
-<div class="analysis-panel">
+<section class="market-board">
 
 
 
-<div class="panel-header">
+
+
+
+
+<!-- =====================================================
+     MARKET TOP 10
+===================================================== -->
+
+
+<div class="panel top10-panel">
+
+
+
+
+
+
+
+<div class="panel-title">
+
 
 
 <div>
 
 
+
+<span class="section-label">
+
+MARKET LEADERBOARD
+
+</span>
+
+
+
+
+
+
+
 <h2>
 
-📊 AI 분석센터
+시장 TOP 10
 
 </h2>
 
 
 
-<p>
-
-Executive Market Intelligence
-
-</p>
-
-
-
-</div>
 
 
 
@@ -874,85 +1119,125 @@ Executive Market Intelligence
 
 
 
+<span class="live-badge">
 
-
-<div class="analysis-tabs">
-
-
-<button class="analysis-tab active">
-
-시장
-
-</button>
-
-
-
-<button class="analysis-tab">
-
-우리금융
-
-</button>
-
-
-
-<button class="analysis-tab">
-
-금융지주
-
-</button>
-
-
-
-<button class="analysis-tab">
-
-경쟁사
-
-</button>
-
-
-
-<button class="analysis-tab">
-
-보고서
-
-</button>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-<div class="analysis-body">
-
-
-
-
-
-
-<div class="analysis-highlight">
-
-
-<span>
-
-현재 시장 평균 대비
+LIVE
 
 </span>
 
 
 
-<strong id="analysis-average-gap">
 
--
 
-</strong>
+
+</div>
+
+
+
+
+
+
+
+
+
+<table class="market-table">
+
+
+
+
+
+<thead>
+
+
+
+<tr>
+
+
+
+
+<th>
+
+순위
+
+</th>
+
+
+
+
+
+<th>
+
+저축은행
+
+</th>
+
+
+
+
+
+<th>
+
+상품명
+
+</th>
+
+
+
+
+
+<th>
+
+금리
+
+</th>
+
+
+
+
+
+<th>
+
+전일대비
+
+</th>
+
+
+
+
+
+</tr>
+
+
+
+
+
+</thead>
+
+
+
+
+
+
+
+<tbody id="market-table">
+
+
+
+</tbody>
+
+
+
+
+
+
+
+</table>
+
+
+
+
+
+
 
 
 
@@ -967,26 +1252,52 @@ Executive Market Intelligence
 
 
 
-<div class="analysis-grid">
 
 
 
-<div class="analysis-card">
+<!-- =====================================================
+     TODAY RATE CHANGE BOARD
+===================================================== -->
+
+
+<div class="market-status-grid">
+
+
+
+
+
+
+
+<div class="panel rise-panel">
+
+
+
+
+
+
+<div class="mini-title">
+
 
 
 <span>
 
-최고금리 대비
+📈 TODAY RISE
 
 </span>
 
 
 
-<strong id="analysis-highest-gap">
 
--
+
+
+<strong>
+
+상승 TOP5
 
 </strong>
+
+
+
 
 
 
@@ -998,82 +1309,83 @@ Executive Market Intelligence
 
 
 
-<div class="analysis-card">
+
+
+
+
+<div id="rise-top5">
+
+
+
+
+
+<div class="empty-message">
+
+
+데이터 준비중...
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="panel fall-panel">
+
+
+
+
+
+
+
+<div class="mini-title">
+
 
 
 <span>
 
-최저금리 대비
+📉 TODAY FALL
 
 </span>
 
 
 
-<strong id="analysis-lowest-gap">
-
--
-
-</strong>
 
 
 
-</div>
+<strong>
 
-
-
-
-
-
-
-<div class="analysis-card">
-
-
-<span>
-
-금융지주 순위
-
-</span>
-
-
-
-<strong id="analysis-financial-rank">
-
--
+하락 TOP5
 
 </strong>
 
 
 
-</div>
-
-
-
-
-
-
-
-<div class="analysis-card">
-
-
-<span>
-
-AI 시장평가
-
-</span>
-
-
-
-<strong id="analysis-market-status">
-
-분석중
-
-</strong>
-
-
-
-</div>
-
-
 
 
 
@@ -1087,25 +1399,18 @@ AI 시장평가
 
 
 
-<div class="analysis-comment">
 
 
-<h3>
-
-AI 의견
-
-</h3>
+<div id="fall-top5">
 
 
 
-<div id="analysis-comment">
 
 
-AI가 시장 데이터를 분석하고 있습니다.
+<div class="empty-message">
 
 
-</div>
-
+데이터 준비중...
 
 
 </div>
@@ -1114,9 +1419,19 @@ AI가 시장 데이터를 분석하고 있습니다.
 
 
 
+</div>
+
+
+
+
+
+
+
 
 
 </div>
+
+
 
 
 
@@ -1140,15 +1455,573 @@ AI가 시장 데이터를 분석하고 있습니다.
 
 
 
+<!-- END PART 2/5 -->
+
+<!-- =====================================================
+     PRODUCT ANALYSIS CENTER
+===================================================== -->
+
+
+<section class="panel product-panel">
+
+
+
+
+
+
+<div class="panel-title">
+
+
+
+<div>
+
+
+<span class="section-label">
+
+PRODUCT ANALYSIS CENTER
+
+</span>
+
+
+
+
+
+<h2>
+
+저축은행 금리 비교
+
+</h2>
+
+
+
+</div>
+
+
+
+
+
+
+<div class="panel-status">
+
+LIVE DATA
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- PRODUCT TYPE -->
+
+
+<div class="product-tabs">
+
+
+
+
+
+<button
+
+class="active"
+
+data-product="deposit">
+
+
+정기예금
+
+
+</button>
+
+
+
+
+
+
+
+<button
+
+data-product="saving">
+
+
+적금
+
+
+</button>
+
+
+
+
+
+
+
+<button
+
+data-product="isa">
+
+
+ISA
+
+
+</button>
+
+
+
+
+
+
+
+<button
+
+data-product="irp">
+
+
+IRP
+
+
+</button>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- PERIOD FILTER -->
+
+
+<div class="period-filter">
+
+
+
+
+
+<button data-period="1">
+
+1개월
+
+</button>
+
+
+
+
+
+
+
+<button data-period="3">
+
+3개월
+
+</button>
+
+
+
+
+
+
+
+<button data-period="6">
+
+6개월
+
+</button>
+
+
+
+
+
+
+
+<button
+
+class="active"
+
+data-period="12">
+
+
+12개월
+
+
+</button>
+
+
+
+
+
+
+
+<button data-period="24">
+
+24개월
+
+</button>
+
+
+
+
+
+
+
+<button data-period="36">
+
+36개월
+
+</button>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- SEARCH -->
+
+
+<div class="search-box">
+
+
+
+<input
+
+
+id="product-search"
+
+
+type="text"
+
+
+placeholder="저축은행명 또는 상품명을 입력하세요"
+
+
+
+>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<!-- PRODUCT KPI -->
+
+
+<div class="product-summary">
+
+
+
+
+
+
+
+<div class="summary-card">
+
+
+<span>
+
+상품수
+
+</span>
+
+
+
+
+
+<strong id="summary-product-count">
+
+-
+
+</strong>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="summary-card">
+
+
+<span>
+
+평균금리
+
+</span>
+
+
+
+
+
+<strong id="summary-average-rate">
+
+-
+
+</strong>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="summary-card">
+
+
+<span>
+
+최고금리
+
+</span>
+
+
+
+
+
+<strong id="summary-max-rate">
+
+-
+
+</strong>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="summary-card">
+
+
+<span>
+
+AI 추천
+
+</span>
+
+
+
+
+
+<strong id="summary-ai">
+
+분석중
+
+</strong>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- PRODUCT TABLE -->
+
+
+<div class="product-scroll">
+
+
+
+<table class="product-table">
+
+
+
+
+
+<thead>
+
+
+
+<tr>
+
+
+
+
+<th>
+
+순위
+
+</th>
+
+
+
+
+<th>
+
+저축은행
+
+</th>
+
+
+
+
+<th>
+
+상품명
+
+</th>
+
+
+
+
+<th>
+
+금리
+
+</th>
+
+
+
+
+<th>
+
+전일대비
+
+</th>
+
+
+
+
+
+</tr>
+
+
+
+
+</thead>
+
+
+
+
+
+
+
+<tbody id="product-table">
+
+
+
+</tbody>
+
+
+
+
+
+
+</table>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+</section>
+
+
+
+
+
+
+
+
+
+</main>
+
+
+
+
+
+
 
 
 
 <!-- =====================================================
-     MAIN DASHBOARD
+     DECISION PANEL START
 ===================================================== -->
 
 
-<section class="dashboard-main">
+<aside class="decision-panel">
 
 
 
@@ -1156,13 +2029,375 @@ AI가 시장 데이터를 분석하고 있습니다.
 
 
 
-<div class="dashboard-left">
+<!-- =====================================================
+     AI ANALYSIS CENTER
+===================================================== -->
+
+
+<div class="panel analysis-panel">
 
 
 
 
 
 
+<div class="panel-header">
+
+
+
+<div>
+
+
+
+<h2>
+
+📊 AI 분석센터
+
+</h2>
+
+
+
+
+
+<p>
+
+Executive Market Intelligence
+
+</p>
+
+
+
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="analysis-tabs">
+
+
+
+
+
+<button class="analysis-tab active">
+
+
+시장
+
+
+</button>
+
+
+
+
+
+
+
+<button class="analysis-tab">
+
+
+우리금융
+
+
+</button>
+
+
+
+
+
+
+
+<button class="analysis-tab">
+
+
+금융지주
+
+
+</button>
+
+
+
+
+
+
+
+<button class="analysis-tab">
+
+
+경쟁사
+
+
+</button>
+
+
+
+
+
+
+
+<button class="analysis-tab">
+
+
+보고서
+
+
+</button>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="analysis-body">
+
+
+
+
+
+
+
+<div class="analysis-highlight">
+
+
+
+<span>
+
+현재 시장 평균 대비
+
+</span>
+
+
+
+
+<strong id="analysis-average-gap">
+
+-
+
+</strong>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="analysis-grid">
+
+
+
+
+
+<div class="analysis-card">
+
+
+
+<span>
+
+최고금리 대비
+
+</span>
+
+
+
+
+<strong id="analysis-highest-gap">
+
+-
+
+</strong>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div class="analysis-card">
+
+
+
+<span>
+
+최저금리 대비
+
+</span>
+
+
+
+
+<strong id="analysis-lowest-gap">
+
+-
+
+</strong>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div class="analysis-card">
+
+
+
+<span>
+
+금융지주 순위
+
+</span>
+
+
+
+
+<strong id="analysis-financial-rank">
+
+-
+
+</strong>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div class="analysis-card">
+
+
+
+<span>
+
+AI 시장평가
+
+</span>
+
+
+
+
+<strong id="analysis-market-status">
+
+분석중
+
+</strong>
+
+
+
+
+</div>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="analysis-comment">
+
+
+
+<h3>
+
+AI 의견
+
+</h3>
+
+
+
+
+
+<div id="analysis-comment">
+
+
+AI가 시장 데이터를 분석하고 있습니다.
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+<!-- END PART 3/5 -->
 
 <!-- =====================================================
      MARKET POSITION
@@ -1179,10 +2414,7 @@ AI가 시장 데이터를 분석하고 있습니다.
 
 
 
-
-
 <div>
-
 
 
 <span class="section-label">
@@ -1190,7 +2422,6 @@ AI가 시장 데이터를 분석하고 있습니다.
 MARKET POSITION
 
 </span>
-
 
 
 
@@ -1205,8 +2436,8 @@ MARKET POSITION
 
 
 
-</div>
 
+</div>
 
 
 
@@ -1237,16 +2468,16 @@ MARKET POSITION
 
 
 
-</div>
-
-
-
-
-
-
 
 </div>
 
+
+
+
+
+
+
+</div>
 
 
 
@@ -1266,7 +2497,9 @@ MARKET POSITION
 
 
 
+
 <div class="score-card primary">
+
 
 
 <span>
@@ -1274,6 +2507,8 @@ MARKET POSITION
 시장순위
 
 </span>
+
+
 
 
 
@@ -1285,6 +2520,9 @@ MARKET POSITION
 
 
 
+
+
+
 <small>
 
 Overall Ranking
@@ -1293,8 +2531,10 @@ Overall Ranking
 
 
 
-</div>
 
+
+
+</div>
 
 
 
@@ -1307,11 +2547,14 @@ Overall Ranking
 <div class="score-card">
 
 
+
 <span>
 
 금융지주 순위
 
 </span>
+
+
 
 
 
@@ -1323,6 +2566,9 @@ Overall Ranking
 
 
 
+
+
+
 <small>
 
 Financial Group
@@ -1331,12 +2577,6 @@ Financial Group
 
 
 
-</div>
-
-
-
-
-
 
 
 
@@ -1349,8 +2589,20 @@ Financial Group
 
 
 
+</div>
 
 
+
+
+
+
+
+
+
+
+
+
+<!-- COMPETITIVE GAP -->
 
 
 <div class="market-gap-grid">
@@ -1360,7 +2612,9 @@ Financial Group
 
 
 
+
 <div class="gap-card">
+
 
 
 <span>
@@ -1368,6 +2622,8 @@ Financial Group
 시장평균 대비
 
 </span>
+
+
 
 
 
@@ -1379,7 +2635,10 @@ Financial Group
 
 
 
+
+
 </div>
+
 
 
 
@@ -1391,11 +2650,14 @@ Financial Group
 <div class="gap-card">
 
 
+
 <span>
 
 최고금리 대비
 
 </span>
+
+
 
 
 
@@ -1407,7 +2669,10 @@ Financial Group
 
 
 
+
+
 </div>
+
 
 
 
@@ -1419,11 +2684,14 @@ Financial Group
 <div class="gap-card">
 
 
+
 <span>
 
 최저금리 대비
 
 </span>
+
+
 
 
 
@@ -1435,15 +2703,23 @@ Financial Group
 
 
 
+
+
+</div>
+
+
+
+
+
+
+
+
+
 </div>
 
 
 
 
-
-
-
-</div>
 
 
 
@@ -1466,6 +2742,7 @@ Financial Group
 
 
 
+
 <p id="market-ai-comment">
 
 
@@ -1477,8 +2754,9 @@ Financial Group
 
 
 
-</div>
 
+
+</div>
 
 
 
@@ -1502,7 +2780,7 @@ Financial Group
 
 
 <!-- =====================================================
-     FINANCIAL GROUP
+     FINANCIAL GROUP COMPETITION
 ===================================================== -->
 
 
@@ -1521,7 +2799,6 @@ Financial Group
 
 
 <div>
-
 
 
 <span class="section-label">
@@ -1555,6 +2832,7 @@ FINANCIAL GROUP
 
 
 
+
 </div>
 
 
@@ -1572,6 +2850,7 @@ FINANCIAL GROUP
 
 
 
+
 <thead>
 
 
@@ -1580,11 +2859,13 @@ FINANCIAL GROUP
 
 
 
+
 <th>
 
 순위
 
 </th>
+
 
 
 
@@ -1598,6 +2879,7 @@ FINANCIAL GROUP
 
 
 
+
 <th>
 
 상품
@@ -1607,11 +2889,13 @@ FINANCIAL GROUP
 
 
 
+
 <th>
 
 금리
 
 </th>
+
 
 
 
@@ -1655,7 +2939,10 @@ FINANCIAL GROUP
 
 
 
+
 </table>
+
+
 
 
 
@@ -1724,22 +3011,7 @@ AI 의견
 
 
 
-</div>
 
-
-
-
-
-
-
-<!-- END PART 2/6 -->
-
-<!-- =====================================================
-     CENTER AREA
-===================================================== -->
-
-
-<div class="dashboard-center">
 
 
 
@@ -1748,11 +3020,13 @@ AI 의견
 
 
 <!-- =====================================================
-     MARKET TOP 10
+     COMPETITOR SNAPSHOT
 ===================================================== -->
 
 
-<div class="panel top10-panel">
+<div class="panel competitor-snapshot">
+
+
 
 
 
@@ -1762,15 +3036,12 @@ AI 의견
 
 
 
-
-
 <div>
-
 
 
 <span class="section-label">
 
-MARKET LEADERBOARD
+COMPETITOR SNAPSHOT
 
 </span>
 
@@ -1782,7 +3053,7 @@ MARKET LEADERBOARD
 
 <h2>
 
-시장 TOP 10
+금융지주 Market View
 
 </h2>
 
@@ -1790,140 +3061,8 @@ MARKET LEADERBOARD
 
 
 
-</div>
-
-
-
-
-
-
-
-
-
-<span class="live-badge">
-
-LIVE
-
-</span>
-
-
-
-
-
-
 
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-<table class="market-table">
-
-
-
-
-
-<thead>
-
-
-
-
-<tr>
-
-
-
-
-<th>
-
-순위
-
-</th>
-
-
-
-
-
-<th>
-
-저축은행
-
-</th>
-
-
-
-
-
-<th>
-
-상품명
-
-</th>
-
-
-
-
-
-<th>
-
-금리
-
-</th>
-
-
-
-
-
-<th>
-
-전일대비
-
-</th>
-
-
-
-
-
-
-</tr>
-
-
-
-
-
-</thead>
-
-
-
-
-
-
-
-
-
-<tbody id="market-table">
-
-
-
-</tbody>
-
-
-
-
-
-
-
-
-
-</table>
-
 
 
 
@@ -1942,798 +3081,29 @@ LIVE
 
 
 
+<div class="snapshot-grid">
 
 
 
 
 
 
-<!-- =====================================================
-     TODAY MARKET STATUS
-===================================================== -->
 
+<div class="snapshot-card woori">
 
-<div class="market-status-grid">
 
 
+<label>
 
+우리금융
 
+</label>
 
 
 
-<div class="panel rise-panel">
 
 
-
-
-
-<div class="mini-title">
-
-
-
-
-
-<span>
-
-📈 TODAY RISE
-
-</span>
-
-
-
-
-
-
-
-
-<strong>
-
-상승 TOP5
-
-</strong>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-<div id="rise-top5">
-
-
-
-
-
-<div class="empty-message">
-
-
-데이터 준비중...
-
-
-</div>
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="panel fall-panel">
-
-
-
-
-
-<div class="mini-title">
-
-
-
-
-
-<span>
-
-📉 TODAY FALL
-
-</span>
-
-
-
-
-
-
-
-<strong>
-
-하락 TOP5
-
-</strong>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-<div id="fall-top5">
-
-
-
-
-
-<div class="empty-message">
-
-
-데이터 준비중...
-
-
-</div>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     AI MARKET INSIGHT
-===================================================== -->
-
-
-
-<div class="panel market-insight">
-
-
-
-
-
-
-
-<div class="panel-title">
-
-
-
-
-
-<h2>
-
-📊 AI Market Insight
-
-</h2>
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="insight-body">
-
-
-
-
-
-
-
-
-
-<div class="insight-item">
-
-
-
-
-
-<span>
-
-오늘 변동성
-
-</span>
-
-
-
-
-
-
-
-<strong id="market-volatility">
-
-
-분석중
-
-
-</strong>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="insight-item">
-
-
-
-
-
-<span>
-
-경쟁강도
-
-</span>
-
-
-
-
-
-
-
-<strong id="competition-level">
-
-
-분석중
-
-
-</strong>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-<div class="insight-item">
-
-
-
-
-
-<span>
-
-AI 종합판단
-
-</span>
-
-
-
-
-
-
-
-<strong id="market-opinion">
-
-
-시장 데이터를 분석하고 있습니다.
-
-
-</strong>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-<!-- END PART 3/6 -->
-
-<!-- =====================================================
-     RIGHT AREA
-===================================================== -->
-
-
-<div class="dashboard-right">
-
-
-
-
-
-
-
-<!-- =====================================================
-     PRODUCT ANALYSIS CENTER
-===================================================== -->
-
-
-<div class="panel product-panel">
-
-
-
-
-
-
-
-
-<div class="panel-title">
-
-
-
-
-
-
-<div>
-
-
-
-<span class="section-label">
-
-PRODUCT ANALYSIS CENTER
-
-</span>
-
-
-
-
-
-
-
-
-<h2>
-
-저축은행 금리 비교
-
-</h2>
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-<div class="panel-status">
-
-LIVE DATA
-
-</div>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- PRODUCT TYPE -->
-
-
-<div class="product-tabs">
-
-
-
-
-
-<button
-
-class="active"
-
-data-product="deposit">
-
-
-정기예금
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-data-product="saving">
-
-
-적금
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-data-product="isa">
-
-
-ISA
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-data-product="irp">
-
-
-IRP
-
-
-</button>
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- PERIOD FILTER -->
-
-
-<div class="period-filter">
-
-
-
-
-
-<button data-period="1">
-
-1개월
-
-</button>
-
-
-
-
-
-
-
-
-<button data-period="3">
-
-3개월
-
-</button>
-
-
-
-
-
-
-
-
-<button data-period="6">
-
-6개월
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-class="active"
-
-data-period="12">
-
-
-12개월
-
-
-</button>
-
-
-
-
-
-
-
-
-<button data-period="24">
-
-24개월
-
-</button>
-
-
-
-
-
-
-
-
-<button data-period="36">
-
-36개월
-
-</button>
-
-
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- SEARCH -->
-
-
-<div class="search-box">
-
-
-
-
-
-<input
-
-
-id="product-search"
-
-
-type="text"
-
-
-placeholder="저축은행명 또는 상품명을 입력하세요"
-
->
-
-
-
-</div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- PRODUCT KPI -->
-
-
-<div class="product-summary">
-
-
-
-
-
-
-
-<div class="summary-card">
-
-
-
-<span>
-
-상품수
-
-</span>
-
-
-
-
-
-
-<strong id="summary-product-count">
-
+<strong id="woori-best-rate">
 
 -
 
@@ -2744,6 +3114,17 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
+<small>
+
+Leader
+
+</small>
+
+
+
+
+
+
 </div>
 
 
@@ -2754,23 +3135,21 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
-<div class="summary-card">
+<div class="snapshot-card">
 
 
 
-<span>
+<label>
 
-평균금리
+KB
 
-</span>
-
-
+</label>
 
 
 
 
-<strong id="summary-average-rate">
 
+<strong id="kb-best-rate">
 
 -
 
@@ -2781,6 +3160,17 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
+<small>
+
+Challenger
+
+</small>
+
+
+
+
+
+
 </div>
 
 
@@ -2791,23 +3181,21 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
-<div class="summary-card">
+<div class="snapshot-card">
 
 
 
-<span>
+<label>
 
-최고금리
+신한
 
-</span>
-
-
+</label>
 
 
 
 
-<strong id="summary-max-rate">
 
+<strong id="shinhan-best-rate">
 
 -
 
@@ -2818,6 +3206,17 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
+<small>
+
+Competitor
+
+</small>
+
+
+
+
+
+
 </div>
 
 
@@ -2828,25 +3227,23 @@ placeholder="저축은행명 또는 상품명을 입력하세요"
 
 
 
-<div class="summary-card">
+<div class="snapshot-card">
 
 
 
-<span>
+<label>
 
-AI 추천
+하나
 
-</span>
-
-
+</label>
 
 
 
 
-<strong id="summary-ai">
 
+<strong id="hana-best-rate">
 
-분석중
+-
 
 </strong>
 
@@ -2855,6 +3252,27 @@ AI 추천
 
 
 
+<small>
+
+Competitor
+
+</small>
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
 </div>
 
 
@@ -2871,260 +3289,14 @@ AI 추천
 
 
 
-
-
-
-
-
-
-
-
-<!-- PRODUCT TABLE HEADER -->
-
-
-
-<div class="product-scroll">
-
-<table class="product-table">
-
-<thead>
-
-<tr>
-
-<th>
-순위
-</th>
-
-<th>
-저축은행
-</th>
-
-<th>
-상품명
-</th>
-
-<th>
-금리
-</th>
-
-<th>
-전일대비
-</th>
-
-</tr>
-
-</thead>
-
-
-<tbody id="product-table">
-
-
-</tbody>
-
-
-</table>
-
-</div>
-
-
-
-
-
-
-
-
-
-<!-- END PART 4/6 -->
+<!-- END PART 4/5 -->
 
 <!-- =====================================================
-     QUICK ACTION SECTION
+     EXECUTIVE INTELLIGENCE SUMMARY
 ===================================================== -->
 
 
-<section class="quick-action-section">
-
-
-
-<div class="quick-card">
-
-
-<div class="quick-icon">
-
-📊
-
-</div>
-
-
-
-<div>
-
-
-<span>
-
-오늘 시장현황
-
-</span>
-
-
-
-<small>
-
-AI 시장 브리핑
-
-</small>
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-<div class="quick-card">
-
-
-<div class="quick-icon">
-
-🏦
-
-</div>
-
-
-
-<div>
-
-
-<span>
-
-우리금융 분석
-
-</span>
-
-
-
-<small>
-
-Market Position
-
-</small>
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-<div class="quick-card">
-
-
-<div class="quick-icon">
-
-📈
-
-</div>
-
-
-
-<div>
-
-
-<span>
-
-금리 변동
-
-</span>
-
-
-
-<small>
-
-Today Change
-
-</small>
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-<div class="quick-card">
-
-
-<div class="quick-icon">
-
-🤖
-
-</div>
-
-
-
-<div>
-
-
-<span>
-
-AI 보고서
-
-</span>
-
-
-
-<small>
-
-Executive Report
-
-</small>
-
-
-
-</div>
-
-
-</div>
-
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     EXECUTIVE SUMMARY
-===================================================== -->
-
-
-<section class="executive-summary">
-
-
-
-
-
-<div class="summary-left">
+<div class="panel executive-summary-panel">
 
 
 
@@ -3133,11 +3305,14 @@ Executive Report
 <div class="summary-header">
 
 
+
 <h2>
 
 Executive Summary
 
 </h2>
+
+
 
 
 
@@ -3149,6 +3324,9 @@ AI Generated
 
 
 
+
+
+
 </div>
 
 
@@ -3158,8 +3336,9 @@ AI Generated
 
 
 
+
 <div id="executive-summary"
-     class="summary-box">
+class="summary-box">
 
 
 AI가 오늘 시장을 분석하고 있습니다.
@@ -3172,17 +3351,11 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 
-</div>
 
 
 
+<div class="executive-score-grid">
 
-
-
-
-
-
-<div class="summary-right">
 
 
 
@@ -3191,11 +3364,14 @@ AI가 오늘 시장을 분석하고 있습니다.
 <div class="executive-score">
 
 
+
 <span>
 
 시장 안정도
 
 </span>
+
+
 
 
 
@@ -3207,7 +3383,12 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 
+
+
+
 </div>
+
+
 
 
 
@@ -3218,11 +3399,14 @@ AI가 오늘 시장을 분석하고 있습니다.
 <div class="executive-score">
 
 
+
 <span>
 
 경쟁강도
 
 </span>
+
+
 
 
 
@@ -3234,7 +3418,12 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 
+
+
+
 </div>
+
+
 
 
 
@@ -3245,11 +3434,14 @@ AI가 오늘 시장을 분석하고 있습니다.
 <div class="executive-score">
 
 
+
 <span>
 
 우리금융 평가
 
 </span>
+
+
 
 
 
@@ -3261,10 +3453,6 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 
-</div>
-
-
-
 
 
 
@@ -3275,7 +3463,21 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 
-</section>
+
+</div>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
 
 
 
@@ -3286,144 +3488,30 @@ AI가 오늘 시장을 분석하고 있습니다.
 
 
 <!-- =====================================================
-     AI RECOMMENDATION
+     AI RECOMMENDATION BOARD
 ===================================================== -->
 
 
-<section class="recommendation-section">
+<div class="panel recommendation-board">
 
 
 
 
 
-<div class="recommend-panel">
 
 
-<div class="recommend-title">
+<div class="recommend-header">
 
-💡 AI 추천 액션
-
-</div>
-
-
-
-
-<div id="recommend-action">
-
-
-오늘은 시장 평균 대비 경쟁력이 유지되고 있습니다.
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-<div class="recommend-panel">
-
-
-<div class="recommend-title">
-
-⚠️ 모니터링 대상
-
-</div>
-
-
-
-
-<div id="watch-bank">
-
-
-변동 은행을 분석하고 있습니다.
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-
-<div class="recommend-panel">
-
-
-<div class="recommend-title">
-
-🚨 오늘 체크포인트
-
-</div>
-
-
-
-
-<div id="today-check">
-
-
-주요 변경사항을 확인하고 있습니다.
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     AI QUICK COMMAND
-===================================================== -->
-
-
-<section class="ai-command-section">
-
-
-
-
-
-<div class="command-header">
 
 
 <h2>
 
-⚡ AI Quick Command
+🎯 AI Recommendation
 
 </h2>
 
 
 
-<span>
-
-One Click Analysis
-
-</span>
 
 
 
@@ -3435,166 +3523,40 @@ One Click Analysis
 
 
 
-<div class="command-grid">
 
 
+<div class="recommend-list">
 
 
 
-<button
 
-class="command-button"
 
-data-question="오늘 시장현황 알려줘">
 
 
-📊
+<div class="recommend-item high">
 
 
-<span>
 
-오늘 시장
+<div class="recommend-priority">
 
-</span>
+HIGH
 
+</div>
 
 
-</button>
 
 
 
+<div class="recommend-content"
 
+id="recommend-high">
 
 
+AI 분석중...
 
 
-<button
+</div>
 
-class="command-button"
-
-data-question="우리금융 시장현황 알려줘">
-
-
-🏦
-
-
-<span>
-
-우리금융
-
-</span>
-
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-class="command-button"
-
-data-question="금융지주 비교">
-
-
-🏛️
-
-
-<span>
-
-금융지주
-
-</span>
-
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-class="command-button"
-
-data-question="최고금리 TOP10">
-
-
-🥇
-
-
-<span>
-
-TOP10
-
-</span>
-
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-class="command-button"
-
-data-question="오늘 금리변동">
-
-
-📈
-
-
-<span>
-
-금리변동
-
-</span>
-
-
-
-</button>
-
-
-
-
-
-
-
-
-<button
-
-class="command-button"
-
-data-question="시장 브리핑">
-
-
-🤖
-
-
-<span>
-
-AI 브리핑
-
-</span>
-
-
-
-</button>
 
 
 
@@ -3608,7 +3570,103 @@ AI 브리핑
 
 
 
-</section>
+
+
+
+<div class="recommend-item medium">
+
+
+
+<div class="recommend-priority">
+
+MEDIUM
+
+</div>
+
+
+
+
+
+<div class="recommend-content"
+
+id="recommend-medium">
+
+
+AI 분석중...
+
+
+</div>
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+<div class="recommend-item low">
+
+
+
+<div class="recommend-priority">
+
+LOW
+
+</div>
+
+
+
+
+
+<div class="recommend-content"
+
+id="recommend-low">
+
+
+AI 분석중...
+
+
+</div>
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
 
 
 
@@ -3623,13 +3681,10 @@ AI 브리핑
 ===================================================== -->
 
 
-<section class="watchlist-section">
+<div class="panel watchlist-panel">
 
 
 
-
-
-<div class="watchlist-panel">
 
 
 
@@ -3638,11 +3693,15 @@ AI 브리핑
 <div class="panel-title">
 
 
+
 <h2>
 
 👀 오늘의 Watch List
 
 </h2>
+
+
+
 
 
 
@@ -3654,7 +3713,13 @@ AI Monitoring
 
 
 
+
+
+
+
 </div>
+
+
 
 
 
@@ -3665,11 +3730,14 @@ AI Monitoring
 <div class="watch-item">
 
 
+
 <div class="watch-bank">
 
 분석 대상 은행
 
 </div>
+
+
 
 
 
@@ -3681,6 +3749,8 @@ AI Monitoring
 
 
 
+
+
 <div class="watch-status warning">
 
 WATCH
@@ -3689,7 +3759,11 @@ WATCH
 
 
 
+
+
+
 </div>
+
 
 
 
@@ -3701,11 +3775,14 @@ WATCH
 <div class="watch-item">
 
 
+
 <div class="watch-bank">
 
 시장 우위 은행
 
 </div>
+
+
 
 
 
@@ -3717,6 +3794,8 @@ WATCH
 
 
 
+
+
 <div class="watch-status good">
 
 GOOD
@@ -3725,7 +3804,11 @@ GOOD
 
 
 
+
+
+
 </div>
+
 
 
 
@@ -3737,11 +3820,14 @@ GOOD
 <div class="watch-item">
 
 
+
 <div class="watch-bank">
 
 우리금융저축은행
 
 </div>
+
+
 
 
 
@@ -3753,6 +3839,8 @@ GOOD
 
 
 
+
+
 <div class="watch-status best">
 
 BEST
@@ -3761,19 +3849,24 @@ BEST
 
 
 
+
+
+
 </div>
 
 
 
 
 
+
+
+
+
 </div>
 
 
 
 
-
-</section>
 
 
 
@@ -3794,7 +3887,11 @@ BEST
 
 
 
+
+
+
 <div class="health-card success">
+
 
 
 <div class="health-icon">
@@ -3805,7 +3902,10 @@ BEST
 
 
 
+
+
 <div class="health-body">
+
 
 
 <span>
@@ -3813,6 +3913,8 @@ BEST
 AI Engine
 
 </span>
+
+
 
 
 
@@ -3824,11 +3926,18 @@ ONLINE
 
 
 
-</div>
 
 
 
 </div>
+
+
+
+
+
+
+</div>
+
 
 
 
@@ -3840,6 +3949,7 @@ ONLINE
 <div class="health-card success">
 
 
+
 <div class="health-icon">
 
 ☁
@@ -3848,7 +3958,10 @@ ONLINE
 
 
 
+
+
 <div class="health-body">
+
 
 
 <span>
@@ -3856,6 +3969,8 @@ ONLINE
 Gemini API
 
 </span>
+
+
 
 
 
@@ -3867,11 +3982,18 @@ Connected
 
 
 
-</div>
 
 
 
 </div>
+
+
+
+
+
+
+</div>
+
 
 
 
@@ -3883,6 +4005,7 @@ Connected
 <div class="health-card success">
 
 
+
 <div class="health-icon">
 
 🔄
@@ -3891,7 +4014,10 @@ Connected
 
 
 
+
+
 <div class="health-body">
+
 
 
 <span>
@@ -3899,6 +4025,8 @@ Connected
 Data Sync
 
 </span>
+
+
 
 
 
@@ -3910,11 +4038,18 @@ Success
 
 
 
-</div>
 
 
 
 </div>
+
+
+
+
+
+
+</div>
+
 
 
 
@@ -3926,6 +4061,7 @@ Success
 <div class="health-card success">
 
 
+
 <div class="health-icon">
 
 ⚙
@@ -3934,7 +4070,10 @@ Success
 
 
 
+
+
 <div class="health-body">
+
 
 
 <span>
@@ -3942,6 +4081,8 @@ Success
 GitHub Actions
 
 </span>
+
+
 
 
 
@@ -3953,7 +4094,6 @@ Success
 
 
 
-</div>
 
 
 
@@ -3964,444 +4104,11 @@ Success
 
 
 
-</section>
-
-
-
-
-
-
-
-<!-- END PART 5/6 -->
-
-<!-- =====================================================
-     EXECUTIVE NOTICE
-===================================================== -->
-
-
-<section class="executive-notice">
-
-
-<div class="notice-panel">
-
-
-<div class="notice-header">
-
-
-<h2>
-
-📢 Executive Notice
-
-</h2>
-
-
-
-<span>
-
-AI Generated
-
-</span>
-
-
-
 </div>
 
 
 
 
-<div id="executive-notice">
-
-오늘 공지사항이 없습니다.
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="notice-panel">
-
-
-<div class="notice-header">
-
-
-<h2>
-
-🚨 Risk Alert
-
-</h2>
-
-
-</div>
-
-
-
-
-<div id="risk-alert">
-
-위험 요소를 분석하고 있습니다.
-
-</div>
-
-
-
-</div>
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     COMPETITOR SNAPSHOT
-===================================================== -->
-
-
-<section class="competitor-snapshot">
-
-
-
-<div class="snapshot-header">
-
-
-<h2>
-
-🏛 금융지주 Snapshot
-
-</h2>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="snapshot-grid">
-
-
-
-
-
-<div class="snapshot-card">
-
-
-<label>
-
-우리금융
-
-</label>
-
-
-<strong id="woori-best-rate">
-
--
-
-</strong>
-
-
-<small>
-
-Leader
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="snapshot-card">
-
-
-<label>
-
-KB
-
-</label>
-
-
-<strong id="kb-best-rate">
-
--
-
-</strong>
-
-
-<small>
-
-Challenger
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="snapshot-card">
-
-
-<label>
-
-신한
-
-</label>
-
-
-<strong id="shinhan-best-rate">
-
--
-
-</strong>
-
-
-<small>
-
-Competitor
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="snapshot-card">
-
-
-<label>
-
-하나
-
-</label>
-
-
-<strong id="hana-best-rate">
-
--
-
-</strong>
-
-
-<small>
-
-Competitor
-
-</small>
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     MORNING BRIEFING
-===================================================== -->
-
-
-<section class="morning-briefing">
-
-
-
-<div class="briefing-panel">
-
-
-
-<div class="briefing-header">
-
-
-
-<div>
-
-
-<span class="section-label">
-
-TODAY BRIEFING
-
-</span>
-
-
-
-<h2>
-
-🌅 Morning Briefing
-
-</h2>
-
-
-
-</div>
-
-
-
-
-
-<div class="briefing-time">
-
-
-<span>
-
-AI Update
-
-</span>
-
-
-
-<strong id="briefing-time">
-
--
-
-</strong>
-
-
-
-</div>
-
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="briefing-body">
-
-
-
-<div class="briefing-avatar">
-
-🤖
-
-</div>
-
-
-
-
-<div id="morning-briefing">
-
-
-좋은 아침입니다.
-
-오늘 시장 브리핑을 준비하고 있습니다.
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="today-focus">
-
-
-
-<div class="focus-title">
-
-🎯 TODAY FOCUS
-
-</div>
-
-
-
-
-
-<ul>
-
-
-
-<li id="focus-1">
-
-시장 데이터를 분석하고 있습니다.
-
-</li>
-
-
-
-
-<li id="focus-2">
-
-금리 변동을 확인 중입니다.
-
-</li>
-
-
-
-
-<li id="focus-3">
-
-경쟁사를 분석하고 있습니다.
-
-</li>
-
-
-
-</ul>
-
-
-
-
-
-</div>
 
 
 
@@ -4417,895 +4124,15 @@ AI Update
 
 
 
-<!-- =====================================================
-     AI RECOMMENDED QUESTIONS
-===================================================== -->
 
 
-<section class="recommend-question">
 
 
+</aside>
 
-<div class="recommend-header">
 
 
-<h2>
 
-💬 AI 추천 질문
-
-</h2>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="question-grid">
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="오늘 시장현황 알려줘">
-
-
-📊 오늘 시장현황
-
-
-</button>
-
-
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="우리금융 시장현황 알려줘">
-
-
-🏦 우리금융 경쟁력
-
-
-</button>
-
-
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="오늘 금리 인상된 은행">
-
-
-📈 금리 인상
-
-
-</button>
-
-
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="오늘 금리 인하된 은행">
-
-
-📉 금리 인하
-
-
-</button>
-
-
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="금융지주 비교">
-
-
-🏛 금융지주 비교
-
-
-</button>
-
-
-
-
-
-
-
-<button
-
-class="recommend-btn"
-
-data-question="시장 TOP10">
-
-
-🥇 TOP10
-
-
-</button>
-
-
-
-
-
-</div>
-
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     EXTENSION PLATFORM
-===================================================== -->
-
-
-<section class="extension-platform">
-
-
-
-<div class="platform-header">
-
-
-<span class="section-label">
-
-FUTURE PLATFORM
-
-</span>
-
-
-
-<h2>
-
-🚀 확장 기능 센터
-
-</h2>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-grid">
-
-
-
-
-
-<div class="platform-card disabled">
-
-
-<div class="platform-icon">
-
-💰
-
-</div>
-
-
-<h3>
-
-ISA
-
-</h3>
-
-
-<p>
-
-Sprint6 예정
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-card disabled">
-
-
-<div class="platform-icon">
-
-🏛
-
-</div>
-
-
-<h3>
-
-IRP
-
-</h3>
-
-
-<p>
-
-Sprint6 예정
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-card">
-
-
-<div class="platform-icon">
-
-📄
-
-</div>
-
-
-<h3>
-
-PDF Report
-
-</h3>
-
-
-<p>
-
-Sprint5
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-card">
-
-
-<div class="platform-icon">
-
-✈
-
-</div>
-
-
-<h3>
-
-Telegram
-
-</h3>
-
-
-<p>
-
-Sprint5
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-card disabled">
-
-
-<div class="platform-icon">
-
-👤
-
-</div>
-
-
-<h3>
-
-Admin
-
-</h3>
-
-
-<p>
-
-Sprint4
-
-</p>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="platform-card">
-
-
-<div class="platform-icon">
-
-⚙
-
-</div>
-
-
-<h3>
-
-AI API
-
-</h3>
-
-
-<p>
-
-Connected
-
-</p>
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     SYSTEM STATUS
-===================================================== -->
-
-
-<section class="system-status">
-
-
-
-<div class="status-header">
-
-
-<h2>
-
-🖥 System Health
-
-</h2>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="status-grid">
-
-
-
-
-
-<div class="status-box">
-
-
-<span>
-
-Data Collector
-
-</span>
-
-
-
-<strong id="collector-status">
-
-🟢 Running
-
-</strong>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="status-box">
-
-
-<span>
-
-GitHub Actions
-
-</span>
-
-
-
-<strong id="github-status-footer">
-
-🟢 Success
-
-</strong>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="status-box">
-
-
-<span>
-
-Gemini AI
-
-</span>
-
-
-
-<strong id="gemini-status-footer">
-
-🟢 Connected
-
-</strong>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="status-box">
-
-
-<span>
-
-Dashboard
-
-</span>
-
-
-
-<strong id="dashboard-status">
-
-🟢 Online
-
-</strong>
-
-
-
-</div>
-
-
-
-
-
-
-</div>
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     AI OPERATIONS CENTER
-===================================================== -->
-
-
-<section class="operations-center">
-
-
-
-<div class="operations-header">
-
-
-
-<div>
-
-
-<span class="section-label">
-
-AI OPERATIONS CENTER
-
-</span>
-
-
-
-<h2>
-
-🛰 실시간 운영 상황
-
-</h2>
-
-
-
-</div>
-
-
-
-
-
-<div class="operations-live">
-
-
-<span class="live-dot"></span>
-
-
-LIVE MONITORING
-
-
-</div>
-
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="operations-grid">
-
-
-
-
-
-<div class="operation-card">
-
-
-<div class="operation-title">
-
-📈 오늘 금리 변동
-
-</div>
-
-
-<strong id="today-rate-change">
-
--
-
-</strong>
-
-
-<small>
-
-변동 상품 수
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="operation-card">
-
-
-<div class="operation-title">
-
-🏦 신규 상품
-
-</div>
-
-
-<strong id="today-new-product">
-
--
-
-</strong>
-
-
-<small>
-
-신규 등록
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="operation-card">
-
-
-<div class="operation-title">
-
-⚠ 확인 필요
-
-</div>
-
-
-<strong id="watch-bank-count">
-
--
-
-</strong>
-
-
-<small>
-
-AI Watch List
-
-</small>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="operation-card">
-
-
-<div class="operation-title">
-
-📄 보고서
-
-</div>
-
-
-<strong id="today-report">
-
-READY
-
-</strong>
-
-
-<small>
-
-Executive Report
-
-</small>
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-
-</section>
-
-
-
-
-
-
-
-
-
-<!-- =====================================================
-     AI RECOMMENDATION BOARD
-===================================================== -->
-
-
-<section class="recommendation-board">
-
-
-
-<div class="recommend-header">
-
-
-<h2>
-
-🎯 AI Recommendation
-
-</h2>
-
-
-</div>
-
-
-
-
-
-
-
-<div class="recommend-list">
-
-
-
-
-
-<div class="recommend-item high">
-
-
-<div class="recommend-priority">
-
-HIGH
-
-</div>
-
-
-
-<div class="recommend-content"
-
-id="recommend-high">
-
-
-AI 분석중...
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="recommend-item medium">
-
-
-<div class="recommend-priority">
-
-MEDIUM
-
-</div>
-
-
-
-<div class="recommend-content"
-
-id="recommend-medium">
-
-
-AI 분석중...
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-
-
-<div class="recommend-item low">
-
-
-<div class="recommend-priority">
-
-LOW
-
-</div>
-
-
-
-<div class="recommend-content"
-
-id="recommend-low">
-
-
-AI 분석중...
-
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-
-</section>
 
 
 
@@ -5324,7 +4151,12 @@ AI 분석중...
 
 
 
+
+
+
+
 <div class="footer-left">
+
 
 
 <strong>
@@ -5332,6 +4164,9 @@ AI 분석중...
 AI Deposit Monitoring System
 
 </strong>
+
+
+
 
 
 
@@ -5343,10 +4178,17 @@ Version 5.0
 
 
 
+
+
+
+
 <br>
 
 
 Last Update :
+
+
+
 
 <span id="last-update">
 
@@ -5356,7 +4198,16 @@ Last Update :
 
 
 
+
+
+
 </div>
+
+
+
+
+
+
 
 
 
@@ -5366,11 +4217,17 @@ Last Update :
 <div class="footer-center">
 
 
+
 <div class="footer-status">
 
 🟢 Dashboard
 
 </div>
+
+
+
+
+
 
 
 <div class="footer-status">
@@ -5380,11 +4237,21 @@ Last Update :
 </div>
 
 
+
+
+
+
+
 <div class="footer-status">
 
 🟢 Data Collector
 
 </div>
+
+
+
+
+
 
 
 <div class="footer-status">
@@ -5395,7 +4262,12 @@ Last Update :
 
 
 
+
+
+
 </div>
+
+
 
 
 
@@ -5406,7 +4278,11 @@ Last Update :
 <div class="footer-right">
 
 
+
 USER
+
+
+
 
 <span id="login-user">
 
@@ -5416,10 +4292,17 @@ Guest
 
 
 
+
+
+
+
 <br>
 
 
 Build
+
+
+
 
 <span>
 
@@ -5429,7 +4312,13 @@ V5.0.0
 
 
 
+
+
+
+
 </div>
+
+
 
 
 
@@ -5442,7 +4331,12 @@ V5.0.0
 
 
 
+
+
+
 </div>
+
+
 
 
 
@@ -5454,10 +4348,20 @@ V5.0.0
 
 
 
+
+
+
+
 </body>
 
 
 </html>
 
 
-<!-- END PART 6/6 -->
+
+
+
+<!-- =====================================================
+     SBRateBot V5 EXECUTIVE DASHBOARD
+     FINAL PART 5/5 END
+===================================================== -->
