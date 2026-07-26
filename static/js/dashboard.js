@@ -1,1556 +1,195 @@
-/* ===================================
-   SBRateBot V5 Dashboard JS
-   Full Replacement Version
-=================================== */
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("SBRateBot V5 Engine Initialized - Fetching Real Data...");
 
+    // 1. KPI 실제 데이터 로드
+    loadKPIData();
 
-let productData = [];
+    // 2. 금리 데이터 로드 (TOP 1~5, TOP 6~10, 상승/하락 TOP5)
+    loadRatesData();
 
-let selectedCategory = "정기예금";
+    // 3. 은행 목록 Dropdown 데이터 로드
+    loadBankOptions();
 
-let selectedPeriod = "12개월";
+    // 4. AI 브리핑 & 시장상태 로드
+    loadAISummary();
 
-let aiTimer = null;
+    // 5. 버튼 및 이벤트 핸들러 등록
+    setupEventHandlers();
+});
 
-
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function(){
-
-
-        console.log(
-            "SBRateBot V5 Dashboard Loaded"
-        );
-
-
-        initDashboard();
-
-        initProductFilter();
-
-        initProductSearch();
-
-        initAISearch();
-
-        initAIAutoSearch();
-
-
-    }
-);
-
-
-
-async function initDashboard(){
-
-
-    await loadKPI();
-
-    await loadWoori();
-
-    await loadFinancial();
-
-    await loadRates();
-
-    await loadProducts();
-
-    await loadAI();
-
-
-    // V5 신규 영역
-
-    await loadExecutive();
-
-    await loadWatchList();
-
-    await loadSystemStatus();
-
-
+// 1. KPI 실제 데이터 로드
+function loadKPIData() {
+    fetch('/api/kpi')
+        .then(res => res.json())
+        .then(data => {
+            if (data.woori_rank) document.getElementById('woori-rank').innerText = data.woori_rank + '위';
+            if (data.max_rate) document.getElementById('max-rate-val').innerText = data.max_rate;
+            if (data.avg_rate) document.getElementById('avg-rate-val').innerText = data.avg_rate;
+            if (data.woori_max_rate) document.getElementById('woori-max-rate-val').innerText = data.woori_max_rate;
+            if (data.total_products) document.getElementById('total-products-val').innerText = data.total_products;
+            if (data.total_banks) document.getElementById('total-banks-val').innerText = data.total_banks;
+            if (data.changes_count !== undefined) document.getElementById('changes-count-val').innerText = data.changes_count;
+        })
+        .catch(err => console.error("KPI Data Load Error:", err));
 }
 
+// 2. 금리 데이터 (TOP10 분할 및 상승/하락) 로드
+function loadRatesData() {
+    fetch('/api/rates')
+        .then(res => res.json())
+        .then(data => {
+            let rates = Array.isArray(data) ? data : (data.rates || data.data || []);
+            
+            if (rates.length === 0) return;
 
+            // 금리 높은 순 정렬
+            rates.sort((a, b) => {
+                let rA = parseFloat(a.rate || a.init_rate || 0);
+                let rB = parseFloat(b.rate || b.init_rate || 0);
+                return rB - rA;
+            });
 
+            // TOP 1~5 / TOP 6~10 분할 렌더링
+            renderTop10Split(rates.slice(0, 10));
 
-
-/* ===================================
-   KPI
-=================================== */
-
-
-async function loadKPI(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/kpi"
-        );
-
-
-        const data =
-        await response.json();
-
-
-
-        setText(
-            "#product-count",
-            (data.product_count || 0)
-            + "개"
-        );
-
-
-        setText(
-            "#bank-count",
-            (data.bank_count || "-")
-        );
-
-
-        setText(
-            "#max-rate",
-            formatRate(
-                data.max_rate
-            )
-        );
-
-
-        setText(
-            "#avg-rate",
-            formatRate(
-                data.average_rate
-            )
-        );
-
-
-        setText(
-            "#min-rate",
-            formatRate(
-                data.min_rate
-            )
-        );
-
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "KPI ERROR",
-            error
-        );
-
-
-    }
-
-
+            // 상승 / 하락 TOP5 렌더링
+            renderMovements(rates);
+        })
+        .catch(err => console.error("Rates Data Load Error:", err));
 }
 
-
-
-
-
-/* ===================================
-   우리금융 Market Position
-=================================== */
-
-
-async function loadWoori(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/woori"
-        );
-
-
-        const data =
-        await response.json();
-
-
-
-        const rate =
-        Number(
-            data.rate || 0
-        );
-
-
-
-        setText(
-            "#woori-rate",
-            formatRate(rate)
-        );
-
-
-
-        setText(
-            "#current-rate",
-            formatRate(rate)
-        );
-
-
-
-        setText(
-            "#market-rank",
-            data.market_rank
-            ?
-            data.market_rank+"위"
-            :
-            "-"
-        );
-
-
-
-        setText(
-            "#basis-product",
-            data.product || "-"
-        );
-
-
-        setText(
-            "#basis-product-card",
-            data.product || "-"
-        );
-
-
-
-        setText(
-            "#financial-rank",
-            data.financial_rank
-            ?
-            data.financial_rank+"위"
-            :
-            "-"
-        );
-
-
-
-        setHTML(
-            "#average-gap",
-            formatGap(
-                data.average_gap
-            )
-        );
-
-
-        setHTML(
-            "#highest-gap",
-            formatGap(
-                data.highest_gap
-            )
-        );
-
-
-        setHTML(
-            "#lowest-gap",
-            formatGap(
-                data.lowest_gap
-            )
-        );
-
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "WOORI ERROR",
-            error
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-/* ===================================
-   금융지주 비교
-=================================== */
-
-
-async function loadFinancial(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/financial"
-        );
-
-
-        const data =
-        await response.json();
-
-
-
-        renderRateTable(
-            "#financial-table",
-            data
-        );
-
-
-
-        calculateFinancialRank(
-            data
-        );
-
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "FINANCIAL ERROR",
-            error
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-function calculateFinancialRank(
-    data
-){
-
-
-    if(
-        !Array.isArray(data)
-    )
-    return;
-
-
-
-    const list =
-    data.filter(
-        item => {
-
-
-            const bank =
-            String(
-                item.bank || ""
-            );
-
-
-            return (
-
-                bank.includes("우리금융")
-
-                ||
-
-                bank.includes("KB")
-
-                ||
-
-                bank.includes("신한")
-
-                ||
-
-                bank.includes("하나")
-
-            );
-
-
-        }
-    );
-
-
-
-    list.sort(
-        (a,b)=>
-        Number(b.rate)
-        -
-        Number(a.rate)
-    );
-
-
-
-    const index =
-    list.findIndex(
-        item =>
-        String(item.bank)
-        .includes(
-            "우리금융"
-        )
-    );
-
-
-
-    setText(
-        "#financial-rank",
-        index >=0
-        ?
-        index+1+"위"
-        :
-        "-"
-    );
-
-
-}
-
-
-
-
-
-/* ===================================
-   시장 TOP10
-=================================== */
-
-
-async function loadRates(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/rates"
-        );
-
-
-        const data =
-        await response.json();
-
-
-
-        renderRateTable(
-            "#market-table",
-            data
-        );
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "RATE ERROR",
-            error
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-/* ===================================
-   공통 테이블
-=================================== */
-
-
-function renderRateTable(
-    selector,
-    data
-){
-
-
-    const table =
-    document.querySelector(
-        selector
-    );
-
-
-    if(!table)
-    return;
-
-
-
-    table.innerHTML="";
-
-
-
-    if(
-        !Array.isArray(data)
-        ||
-        data.length===0
-    ){
-
-
-        table.innerHTML = `
-
-        <tr>
-        <td colspan="5">
-        데이터 없음
-        </td>
-        </tr>
-
+function renderTop10Split(top10List) {
+    const top1_5Box = document.getElementById('top1-5-list');
+    const top6_10Box = document.getElementById('top6-10-list');
+
+    if (!top1_5Box || !top6_10Box) return;
+
+    top1_5Box.innerHTML = '';
+    top6_10Box.innerHTML = '';
+
+    top10List.forEach((item, index) => {
+        const rank = index + 1;
+        const bankName = item.bank_name || item.bank || '저축은행';
+        const rate = parseFloat(item.rate || item.init_rate || 0).toFixed(2);
+        const isWoori = bankName.includes('우리');
+
+        const itemHTML = `
+            <div class="rank-list-item ${isWoori ? 'highlight' : ''}">
+                <span><strong class="rank-num ${isWoori ? 'text-primary' : ''}">${rank}</strong>${bankName}</span>
+                <span class="fw-bold ${isWoori ? 'text-primary' : ''}">${rate}%</span>
+            </div>
         `;
 
-
-        return;
-
-    }
-
-
-
-    data.forEach(
-        (item,index)=>{
-
-
-            const rank =
-            item.rank
-            ||
-            index+1;
-
-
-
-            const row =
-            document.createElement(
-                "tr"
-            );
-
-
-
-            row.innerHTML = `
-
-            <td>
-            ${rank}위
-            </td>
-
-            <td>
-            ${
-                highlightWoori(
-                    item.bank
-                )
-            }
-            </td>
-
-            <td>
-            ${item.product || "-"}
-            </td>
-
-            <td>
-            <strong>
-            ${
-                formatRate(
-                    item.rate
-                )
-            }
-            </strong>
-            </td>
-
-            <td>
-            ${
-                formatChange(
-                    item.change
-                )
-            }
-            </td>
-
-            `;
-
-
-
-            table.appendChild(
-                row
-            );
-
-
+        if (rank <= 5) {
+            top1_5Box.innerHTML += itemHTML;
+        } else {
+            top6_10Box.innerHTML += itemHTML;
         }
-    );
-
-
+    });
 }
 
-/* ===================================
-   전체 상품 조회
-=================================== */
+function renderMovements(rates) {
+    const upBox = document.getElementById('rate-up-list');
+    const downBox = document.getElementById('rate-down-list');
 
+    // diff / change 항목이 있는 데이터 필터링
+    let upRates = rates.filter(r => (r.change || r.diff || 0) > 0);
+    let downRates = rates.filter(r => (r.change || r.diff || 0) < 0);
 
-async function loadProducts(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/products"
-        );
-
-
-        productData =
-        await response.json();
-
-
-
-        renderProducts();
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "PRODUCT ERROR",
-            error
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-function renderProducts(){
-
-
-    const table =
-    document.querySelector(
-        "#product-table"
-    );
-
-
-    if(!table)
-    return;
-
-
-
-    const keyword =
-    (
-        document.querySelector(
-            "#product-search"
-        )?.value
-        ||
-        ""
-    )
-    .toLowerCase();
-
-
-
-    let filtered =
-    productData.filter(
-        item=>{
-
-
-            const category =
-            item.category || "";
-
-
-            const period =
-            item.period || "";
-
-
-
-            const bank =
-            String(
-                item.bank || ""
-            )
-            .toLowerCase();
-
-
-
-            const product =
-            String(
-                item.product || ""
-            )
-            .toLowerCase();
-
-
-
-            return (
-
-                category === selectedCategory
-
-                &&
-
-                (
-                    selectedCategory !== "정기예금"
-
-                    ||
-
-                    period === selectedPeriod
-
-                )
-
-                &&
-
-                (
-
-                    bank.includes(keyword)
-
-                    ||
-
-                    product.includes(keyword)
-
-                )
-
-            );
-
-
+    if (upBox) {
+        if (upRates.length > 0) {
+            upBox.innerHTML = upRates.slice(0, 5).map(r => `
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-truncate">${r.bank_name || r.bank}</span>
+                    <span class="rate-up">+${parseFloat(r.change || r.diff).toFixed(2)}%p</span>
+                </div>
+            `).join('');
+        } else {
+            upBox.innerHTML = '<div class="text-muted text-xs py-2">상승 항목 없음</div>';
         }
-    );
+    }
 
-
-
-    filtered.sort(
-        (a,b)=>
-        Number(b.rate)
-        -
-        Number(a.rate)
-    );
-
-
-
-    table.innerHTML="";
-
-
-
-    filtered.forEach(
-        (item,index)=>{
-
-
-            const row =
-            document.createElement(
-                "tr"
-            );
-
-
-
-            row.innerHTML = `
-
-            <td>
-            ${index+1}위
-            </td>
-
-
-            <td>
-            ${
-                highlightWoori(
-                    item.bank
-                )
-            }
-            </td>
-
-
-            <td>
-            ${item.product || "-"}
-            </td>
-
-
-            <td>
-            <strong>
-            ${
-                formatRate(
-                    item.rate
-                )
-            }
-            </strong>
-            </td>
-
-
-            <td>
-            ${
-                formatChange(
-                    item.change
-                )
-            }
-            </td>
-
-            `;
-
-
-            table.appendChild(
-                row
-            );
-
-
+    if (downBox) {
+        if (downRates.length > 0) {
+            downBox.innerHTML = downRates.slice(0, 5).map(r => `
+                <div class="d-flex justify-content-between py-1">
+                    <span class="text-truncate">${r.bank_name || r.bank}</span>
+                    <span class="rate-down">${parseFloat(r.change || r.diff).toFixed(2)}%p</span>
+                </div>
+            `).join('');
+        } else {
+            downBox.innerHTML = '<div class="text-muted text-xs py-2">하락 항목 없음</div>';
         }
-    );
-
-
-}
-
-
-
-
-
-/* ===================================
-   상품 필터
-=================================== */
-
-
-function initProductFilter(){
-
-
-    const categoryButtons =
-    document.querySelectorAll(
-        ".product-tabs button"
-    );
-
-
-
-    const periodButtons =
-    document.querySelectorAll(
-        ".period-filter button"
-    );
-
-
-
-    categoryButtons.forEach(
-        button=>{
-
-
-            button.addEventListener(
-                "click",
-                ()=>{
-
-
-                    categoryButtons.forEach(
-                        b=>
-                        b.classList.remove(
-                            "active"
-                        )
-                    );
-
-
-                    button.classList.add(
-                        "active"
-                    );
-
-
-
-                    selectedCategory =
-                    button.innerText.trim();
-
-
-
-                    renderProducts();
-
-
-                }
-            );
-
-
-        }
-    );
-
-
-
-    periodButtons.forEach(
-        button=>{
-
-
-            button.addEventListener(
-                "click",
-                ()=>{
-
-
-                    periodButtons.forEach(
-                        b=>
-                        b.classList.remove(
-                            "active"
-                        )
-                    );
-
-
-
-                    button.classList.add(
-                        "active"
-                    );
-
-
-
-                    selectedPeriod =
-                    button.innerText.trim();
-
-
-
-                    renderProducts();
-
-
-                }
-            );
-
-
-        }
-    );
-
-
-}
-
-
-
-
-
-function initProductSearch(){
-
-
-    const input =
-    document.querySelector(
-        "#product-search"
-    );
-
-
-    if(!input)
-    return;
-
-
-
-    input.addEventListener(
-        "input",
-        renderProducts
-    );
-
-
-}
-
-
-
-
-
-/* ===================================
-   AI Summary
-=================================== */
-
-
-async function loadAI(){
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/ai"
-        );
-
-
-        const data =
-        await response.json();
-
-
-
-        const box =
-        document.querySelector(
-            "#ai-summary"
-        );
-
-
-
-        if(!box)
-        return;
-
-
-
-        box.innerHTML =
-
-        (
-
-            data.summary || []
-
-        )
-        .map(
-            item=>
-            `<li>${item}</li>`
-        )
-        .join("");
-
-
-
     }
-    catch(error){
-
-
-        console.error(
-            "AI ERROR",
-            error
-        );
-
-
-    }
-
-
 }
 
-
-
-
-
-/* ===================================
-   V5 Executive Dashboard
-=================================== */
-
-
-async function loadExecutive(){
-
-
-    const summary =
-    document.querySelector(
-        "#executive-summary"
-    );
-
-
-    if(summary){
-
-
-        summary.innerHTML = `
-
-        <p>
-        AI가 오늘 시장 데이터를 분석했습니다.
-        </p>
-
-        <p>
-        우리금융 경쟁력과 금리 변동을
-        지속 모니터링합니다.
-        </p>
-
-        `;
-
-
-    }
-
-
-
-    setText(
-        "#market-status",
-        "안정"
-    );
-
-
-    setText(
-        "#ai-confidence",
-        "99%"
-    );
-
-
+// 3. 은행 검색 드롭다운 동적 구성
+function loadBankOptions() {
+    fetch('/api/banks')
+        .then(res => res.json())
+        .then(banks => {
+            const selectEl = document.getElementById('filter-bank');
+            if (!selectEl) return;
+            selectEl.innerHTML = '<option value="">은행 선택 (전체)</option>';
+            
+            let bankList = Array.isArray(banks) ? banks : (banks.banks || []);
+            bankList.forEach(bank => {
+                const name = typeof bank === 'string' ? bank : (bank.name || bank.bank_name);
+                selectEl.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+        })
+        .catch(err => console.error("Bank Options Load Error:", err));
 }
 
-
-
-
-
-async function loadWatchList(){
-
-
-    const box =
-    document.querySelector(
-        "#watch-list"
-    );
-
-
-
-    if(!box)
-    return;
-
-
-
-    box.innerHTML = `
-
-    <div>
-    🟢 우리금융저축은행
-    <br>
-    금융지주 경쟁력 유지
-    </div>
-
-
-    <div>
-    ⚠ 경쟁은행 모니터링
-    <br>
-    금리 변화 감시
-    </div>
-
-
-    `;
-
-
-}
-
-
-
-
-
-async function loadSystemStatus(){
-
-
-    setText(
-        "#data-status",
-        "Running"
-    );
-
-
-    setText(
-        "#ai-status",
-        "Connected"
-    );
-
-
-    setText(
-        "#dashboard-status",
-        "Online"
-    );
-
-
-}
-
-
-
-
-
-/* ===================================
-   AI 검색
-=================================== */
-
-
-function initAISearch(){
-
-
-    const button =
-    document.querySelector(
-        "#ai-search-btn"
-    );
-
-
-    const input =
-    document.querySelector(
-        "#ai-question"
-    );
-
-
-
-    if(button){
-
-
-        button.addEventListener(
-            "click",
-            searchAI
-        );
-
-
-    }
-
-
-
-    if(input){
-
-
-        input.addEventListener(
-            "keydown",
-            e=>{
-
-
-                if(
-                    e.key==="Enter"
-                ){
-
-
-                    e.preventDefault();
-
-                    searchAI();
-
-
-                }
-
-
+// 4. AI 시장 브리핑
+function loadAISummary() {
+    fetch('/api/ai/summary')
+        .then(res => res.json())
+        .then(data => {
+            if (data.summary) {
+                document.getElementById('ai-summary-text').innerText = data.summary;
             }
-        );
-
-
-    }
-
-
-}
-
-
-
-
-
-function initAIAutoSearch(){
-
-
-    const input =
-    document.querySelector(
-        "#ai-question"
-    );
-
-
-
-    if(!input)
-    return;
-
-
-
-    input.addEventListener(
-        "input",
-        ()=>{
-
-
-            clearTimeout(
-                aiTimer
-            );
-
-
-
-            aiTimer =
-            setTimeout(
-                ()=>{
-
-
-                    if(
-                        input.value.trim()
-                        .length>=2
-                    ){
-
-                        searchAI();
-
-                    }
-
-
-                },
-                800
-            );
-
-
-        }
-    );
-
-
-}
-
-
-
-
-
-async function searchAI(){
-
-
-    const input =
-    document.querySelector(
-        "#ai-question"
-    );
-
-
-
-    const answer =
-    document.querySelector(
-        "#ai-answer"
-    );
-
-
-
-    if(
-        !input ||
-        !answer
-    )
-    return;
-
-
-
-    const question =
-    input.value.trim();
-
-
-
-    if(!question)
-    return;
-
-
-
-    answer.innerText =
-    "AI 분석중...";
-
-
-
-    try{
-
-
-        const response =
-        await fetch(
-            "/api/ai/search",
-            {
-
-                method:"POST",
-
-                headers:{
-
-                    "Content-Type":
-                    "application/json"
-
-                },
-
-                body:
-                JSON.stringify({
-
-                    question:question
-
-                })
-
+            if (data.status) {
+                document.getElementById('market-status-text').innerText = data.status;
             }
-        );
-
-
-
-        const data =
-        await response.json();
-
-
-
-        answer.innerHTML =
-        data.answer
-        ||
-        "분석 결과가 없습니다.";
-
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            error
-        );
-
-
-        answer.innerText =
-        "AI 검색 오류";
-
-
-    }
-
-
+            if (data.description) {
+                document.getElementById('ai-assistant-desc').innerHTML = data.description;
+            }
+        })
+        .catch(err => console.log("AI Summary Default Active"));
 }
 
-
-
-
-
-/* ===================================
-   공통 함수
-=================================== */
-
-
-function setText(
-    selector,
-    value
-){
-
-
-    const el =
-    document.querySelector(
-        selector
-    );
-
-
-    if(el)
-    el.innerText =
-    value;
-
-
-}
-
-
-
-
-
-function setHTML(
-    selector,
-    value
-){
-
-
-    const el =
-    document.querySelector(
-        selector
-    );
-
-
-    if(el)
-    el.innerHTML =
-    value;
-
-
-}
-
-
-
-
-
-function formatRate(
-    value
-){
-
-
-    const num =
-    Number(value || 0);
-
-
-
-    if(
-        !num
-    )
-    return "-";
-
-
-
-    return num.toFixed(2)+"%";
-
-
-}
-
-
-
-
-
-function formatGap(
-    value
-){
-
-
-    const num =
-    Number(value || 0);
-
-
-
-    if(num>0){
-
-
-        return `
-
-        <span class="rate-change increase">
-
-        +${num.toFixed(2)}%p
-
-        </span>
-
-        `;
-
-
-    }
-
-
-
-    if(num<0){
-
-
-        return `
-
-        <span class="rate-change decrease">
-
-        ▲${Math.abs(num).toFixed(2)}%p
-
-        </span>
-
-        `;
-
-
-    }
-
-
-
-    return "0.00%p";
-
-
-}
-
-
-
-
-
-function formatChange(
-    value
-){
-
-
-    const num =
-    Number(
-        String(value || 0)
-        .replace("+","")
-    );
-
-
-
-    if(num>0){
-
-
-        return `
-
-        <span class="rate-change increase">
-
-        +${num.toFixed(2)}%
-
-        </span>
-
-        `;
-
-
-    }
-
-
-
-    if(num<0){
-
-
-        return `
-
-        <span class="rate-change decrease">
-
-        ▲${Math.abs(num).toFixed(2)}%
-
-        </span>
-
-        `;
-
-
-    }
-
-
-
-    return "0.00%";
-
-
-}
-
-
-
-
-
-function highlightWoori(
-    name
-){
-
-
-    if(
-        String(name)
-        .includes(
-            "우리금융"
-        )
-    ){
-
-
-        return `<strong>${name}</strong>`;
-
-
-    }
-
-
-    return name || "-";
-
-
+// 5. Gemini AI 질의응답 처리
+function setupEventHandlers() {
+    const btnSearch = document.getElementById('btn-ai-search');
+    const btnQuickAsk = document.getElementById('btn-ai-quick-ask');
+
+    const handleAiAsk = (inputId) => {
+        const inputEl = document.getElementById(inputId);
+        const query = inputEl ? inputEl.value.trim() : '';
+        if (!query) return alert('질문 내용을 입력해주세요.');
+
+        // 로딩 표시
+        const originalText = btnSearch ? btnSearch.innerHTML : '';
+        if (btnSearch) btnSearch.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 분석중...';
+
+        fetch('/api/ai/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(`🤖 Gemini AI 분석 답변:\n\n${data.answer || '응답을 완료했습니다.'}`);
+        })
+        .catch(err => {
+            alert('AI 응답을 가져오는 중 오류가 발생했습니다.');
+        })
+        .finally(() => {
+            if (btnSearch) btnSearch.innerHTML = originalText;
+        });
+    };
+
+    if (btnSearch) btnSearch.addEventListener('click', () => handleAiAsk('ai-prompt-input'));
+    if (btnQuickAsk) btnQuickAsk.addEventListener('click', () => handleAiAsk('ai-quick-input'));
 }

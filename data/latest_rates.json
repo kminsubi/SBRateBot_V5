@@ -694,8 +694,8 @@
         "tel": "15884111",
         "change_1": 0.0,
         "change_3": 0.0,
-        "change_6": -0.1,
-        "change_12": -0.1,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -722,8 +722,8 @@
         "tel": "15884111",
         "change_1": 0.0,
         "change_3": 0.0,
-        "change_6": -0.1,
-        "change_12": -0.1,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -750,8 +750,8 @@
         "tel": "15884111",
         "change_1": 0.0,
         "change_3": 0.0,
-        "change_6": -0.1,
-        "change_12": -0.1,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -779,7 +779,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -807,7 +807,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -834,7 +834,7 @@
         "tel": "15884111",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.1,
+        "change_6": 0.0,
         "change_12": 0,
         "change_24": 0,
         "change_36": 0
@@ -862,7 +862,7 @@
         "tel": "15884111",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.1,
+        "change_6": 0.0,
         "change_12": 0,
         "change_24": 0,
         "change_36": 0
@@ -1059,7 +1059,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0.0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -1087,7 +1087,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0.0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -1115,7 +1115,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.04,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -1143,7 +1143,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -1171,7 +1171,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -1226,7 +1226,7 @@
         "tel": "18338889",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.2,
+        "change_6": 0.0,
         "change_12": 0,
         "change_24": 0,
         "change_36": 0
@@ -1254,7 +1254,7 @@
         "tel": "18338889",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.2,
+        "change_6": 0.0,
         "change_12": 0,
         "change_24": 0,
         "change_36": 0
@@ -2571,7 +2571,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.45,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0
     },
@@ -2683,7 +2683,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0
     },
@@ -2711,7 +2711,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0
     },
@@ -2739,7 +2739,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0
     },
@@ -2767,8 +2767,8 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.1,
-        "change_24": -0.1,
+        "change_12": 0.0,
+        "change_24": 0.0,
         "change_36": 0
     },
     {
@@ -3437,9 +3437,9 @@
         "homepage": "https://www.mssb.co.kr",
         "tel": "0537565200",
         "change_1": 0.0,
-        "change_3": 1.15,
-        "change_6": 1.0,
-        "change_12": -0.18,
+        "change_3": 0.0,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4111,7 +4111,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": 0.3,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4139,7 +4139,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": 0.3,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4587,7 +4587,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4615,7 +4615,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4643,7 +4643,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -4671,7 +4671,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -4699,7 +4699,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.1,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -4727,7 +4727,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0.0,
         "change_36": 0.0
     },
@@ -7946,8 +7946,8 @@
         "tel": "0542754060",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.1,
-        "change_12": -0.1,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -7974,8 +7974,8 @@
         "tel": "0542754060",
         "change_1": 0,
         "change_3": 0,
-        "change_6": -0.1,
-        "change_12": -0.1,
+        "change_6": 0.0,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -8005,7 +8005,7 @@
         "change_6": 0,
         "change_12": 0,
         "change_24": 0,
-        "change_36": -0.1
+        "change_36": 0.0
     },
     {
         "bank": "머스트삼일",
@@ -8033,7 +8033,7 @@
         "change_6": 0,
         "change_12": 0,
         "change_24": 0,
-        "change_36": -0.1
+        "change_36": 0.0
     },
     {
         "bank": "오성",
@@ -8395,7 +8395,7 @@
         "change_1": 0.0,
         "change_3": 0.0,
         "change_6": 0.0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -8451,7 +8451,7 @@
         "change_1": 0,
         "change_3": 0,
         "change_6": 0,
-        "change_12": -0.2,
+        "change_12": 0.0,
         "change_24": 0,
         "change_36": 0
     },
@@ -10464,8 +10464,8 @@
         "url": "https://www.oksavingsbank.com/#/gdsDepsMngmDtl?depsGdsSqno=39&pageNo=1&menuCd=00365&mngmTr=00000&inrtTp=00000&etryMthd=00000&acmlMthd=00000&entrObjc=00000&frdmEtryMthd=00000",
         "homepage": "http://www.oksavingsbank.com/",
         "tel": "18997979",
-        "change_1": -0.2,
-        "change_3": -0.1,
+        "change_1": 0.0,
+        "change_3": 0.0,
         "change_6": 0.0,
         "change_12": 0.0,
         "change_24": 0,
@@ -10492,8 +10492,8 @@
         "url": "https://www.oksavingsbank.com/#/gdsDepsMngmDtl?depsGdsSqno=39&pageNo=1&menuCd=00365&mngmTr=00000&inrtTp=00000&etryMthd=00000&acmlMthd=00000&entrObjc=00000&frdmEtryMthd=00000",
         "homepage": "http://www.oksavingsbank.com/",
         "tel": "18997979",
-        "change_1": -0.2,
-        "change_3": -0.1,
+        "change_1": 0.0,
+        "change_3": 0.0,
         "change_6": 0.0,
         "change_12": 0.0,
         "change_24": 0,
