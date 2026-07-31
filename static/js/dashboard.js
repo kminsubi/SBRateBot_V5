@@ -13,13 +13,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initDashboard() {
 
+
     console.log("SBRateBot V5 Dashboard Start");
+
 
     fetchKPI();
 
-    // fetchWooriPosition();
 
     loadHero();
+
+
+    fetchAISummary();
+
 
 }
 
@@ -90,6 +95,196 @@ async function fetchKPI() {
     renderKPI(
         data
     );
+
+
+}
+
+/* ==========================================================
+   AI MARKET SUMMARY
+   /api/ai
+
+   V5 Executive Dashboard
+   AI 시장분석 현황
+========================================================== */
+
+
+async function fetchAISummary(){
+
+
+    const data =
+        await apiFetch(
+            "/api/ai"
+        );
+
+
+
+    if(!data){
+
+        return;
+
+    }
+
+
+
+    console.log(
+        "AI SUMMARY DATA",
+        data
+    );
+
+
+
+    const target =
+        document.getElementById(
+            "executive-summary-mini"
+        );
+
+
+
+    if(!target){
+
+        return;
+
+    }
+
+
+
+    if(
+
+        !Array.isArray(
+            data.summary
+        )
+
+    ){
+
+        target.innerHTML =
+            "시장 데이터를 분석하는 중입니다.";
+
+        return;
+
+    }
+
+
+
+    const summary =
+        data.summary;
+
+
+
+    /*
+        AI 의견
+        summary 마지막 2개 문장 사용
+    */
+
+
+    const aiOpinion =
+
+    summary
+    .slice(
+        6
+    )
+    .join(" ")
+    .replace(
+        /은행별 금리 경쟁 차이가 큰 시장으로|평균금리는 3% 이상으로/g,
+        ""
+    )
+    .trim();
+
+
+
+    /*
+        시장 데이터
+    */
+
+
+    const marketData = `
+
+        <div class="mt-3 font-bold text-gray-800">
+
+            📊 시장 현황
+
+        </div>
+
+
+        <div class="mt-2">
+
+            ${summary[1] || ""}
+
+            |
+
+            ${summary[2] || ""}
+
+        </div>
+
+
+        <div>
+
+            ${summary[3] || ""}
+
+            |
+
+            ${summary[4] || ""}
+
+        </div>
+
+
+        <div>
+
+            ${summary[5] || ""}
+
+        </div>
+
+    `;
+
+
+
+    /*
+        최종 출력
+    */
+
+
+    target.innerHTML = `
+
+
+        <div class="mb-3">
+
+
+            <div class="font-bold text-gray-800 mb-1">
+
+                💡 AI 의견
+
+            </div>
+
+
+            <div class="text-sm text-gray-700 leading-5">
+
+
+    ${
+
+        aiOpinion
+
+        ||
+
+        "시장 금리 흐름을 분석 중입니다."
+
+    }
+
+
+</div>
+
+
+        </div>
+
+
+
+        <div class="border-t pt-3">
+
+            ${marketData}
+
+        </div>
+
+
+    `;
+
 
 
 }
