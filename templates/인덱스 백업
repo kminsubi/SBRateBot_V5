@@ -7,8 +7,9 @@
   <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<link rel="stylesheet" href="/static/css/dashboard.css">
-<script defer src="/static/js/dashboard.js"></script>
+<link rel="stylesheet" href="/static/dashboard.css">
+
+<script defer src="/static/dashboard.js"></script>
 
 </head>
 <body class="bg-[#f4f6f9] text-gray-800 font-sans min-h-screen">
@@ -87,8 +88,7 @@
 <div class="col-span-4">
 
 
-<div class="bg-white rounded-2xl border border-blue-100 shadow-sm p-4">
-
+<div class="bg-white rounded-2xl border border-blue-100 shadow-sm p-4 h-full">
 
 
 <!-- HERO HEADER -->
@@ -106,7 +106,6 @@ src="/static/images/ci.png"
 alt="우리금융저축은행"
 class="h-5 object-contain"
 />
-
 
 
 <span class="text-sm font-bold text-gray-800 whitespace-nowrap">
@@ -134,62 +133,29 @@ class="h-5 object-contain"
 
 
 
+<!-- 시장순위 강조 -->
+
+<div class="flex items-center justify-between bg-blue-50 rounded-xl px-3 py-2 mb-3">
 
 
-<!-- ======================================================
-     HERO SUB PANEL
-====================================================== -->
+<span class="text-xs text-gray-500">
 
-
-<div class="bg-blue-50 rounded-xl p-3">
-
-
-
-<!-- 시장순위 -->
-
-<div class="flex items-center justify-between bg-white rounded-lg px-3 py-2 mb-3">
-
-
-<span class="text-xs text-gray-500 whitespace-nowrap ml-5">
-    시장순위
-    <span style="font-size:9px !important; color:#9ca3af !important;">
-        (최고금리 기준)
-    </span>
-</span>
-
-
-
-<div class="flex items-center gap-2 justify-end">
-
-
-<span class="text-base">
-
-🏆
+시장순위
 
 </span>
+
 
 
 <div
 id="kpi-rank"
-class="text-4xl font-extrabold text-blue-700">
+class="text-2xl font-extrabold text-blue-700">
 
 -
 
 </div>
 
 
-<span class="text-lg font-bold text-blue-700">
-
-위
-
-</span>
-
-
 </div>
-
-
-</div>
-
 
 
 
@@ -201,8 +167,7 @@ class="text-4xl font-extrabold text-blue-700">
 
 
 
-<div class="bg-white rounded-lg py-2">
-
+<div>
 
 <div class="text-[11px] text-gray-500">
 
@@ -225,10 +190,7 @@ class="text-sm font-bold text-blue-600">
 
 
 
-
-
-<div class="bg-white rounded-lg py-2">
-
+<div>
 
 <div class="text-[11px] text-gray-500">
 
@@ -251,21 +213,18 @@ class="text-sm font-bold">
 
 
 
-
-
-<div class="bg-white rounded-lg py-2">
-
+<div>
 
 <div class="text-[11px] text-gray-500">
 
-업권 최저금리
+평균 대비
 
 </div>
 
 
 <div
-id="kpi-lowest-rate-mini"
-class="text-sm font-bold text-blue-800">
+id="hero-gap"
+class="text-sm font-bold text-blue-600">
 
 -
 
@@ -274,9 +233,6 @@ class="text-sm font-bold text-blue-800">
 
 </div>
 
-
-
-</div>
 
 
 </div>
@@ -293,146 +249,137 @@ class="text-sm font-bold text-blue-800">
 
 
 <!-- ======================================================
-     2. KPI SUMMARY 6 CARD
-     2 x 3 구조
+     2. KPI SUMMARY 4 CARD
+
+     2 x 2 구조
 ====================================================== -->
+
 
 <div class="col-span-4">
 
-    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
 
-        <!-- KPI HEADER -->
-        <div class="flex items-center justify-between mb-3">
+<div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 h-full">
 
-            <span class="text-sm font-bold text-gray-800">
-                업권현황
-            </span>
 
-            <div class="text-xl">
-                📊
-            </div>
+<div class="grid grid-cols-2 gap-3">
 
-        </div>
 
-        <div class="grid grid-cols-2 gap-2">
 
-            <!-- 최고금리 比 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
+<!-- 평균금리 -->
 
-                <div class="flex justify-between items-center">
 
-                    <span class="text-[11px] text-gray-500">
-                        최고금리比
-                    </span>
+<div class="bg-gray-50 rounded-xl p-3">
 
-                    <span
-                        id="kpi-highest-gap"
-                        class="text-sm font-bold">
-                        -
-                    </span>
 
-                </div>
+<div class="text-xs text-gray-500">
 
-            </div>
+📊 평균금리
 
-            <!-- 최저금리 比 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
+</div>
 
-                <div class="flex justify-between items-center">
 
-                    <span class="text-[11px] text-gray-500">
-                        최저금리比
-                    </span>
+<div
+id="kpi-average-rate"
+class="mt-2 text-xl font-bold">
 
-                    <span
-                        id="kpi-lowest-gap"
-                        class="text-sm font-bold">
-                        -
-                    </span>
+-
 
-                </div>
+</div>
 
-            </div>
 
-            <!-- 평균금리 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
+</div>
 
-                <div class="flex justify-between items-center">
 
-                    <span class="text-[11px] text-gray-500">
-                        평균금리
-                    </span>
 
-                    <span
-                        id="kpi-average-rate"
-                        class="text-sm font-bold">
-                        -
-                    </span>
 
-                </div>
 
-            </div>
+<!-- 금리경쟁력 -->
 
-            <!-- 평균금리 比 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
 
-                <div class="flex justify-between items-center">
+<div class="bg-gray-50 rounded-xl p-3">
 
-                    <span class="text-[11px] text-gray-500">
-                        평균금리比
-                    </span>
 
-                    <span
-                        id="market-gap"
-                        class="text-sm font-bold text-blue-600">
-                        -
-                    </span>
+<div class="text-xs text-gray-500">
 
-                </div>
+⚖️ 금리경쟁력
 
-            </div>
+</div>
 
-            <!-- 상품수 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
 
-                <div class="flex justify-between items-center">
+<div
+id="market-gap"
+class="mt-2 text-xl font-bold text-blue-600">
 
-                    <span class="text-[11px] text-gray-500">
-                        상품수
-                    </span>
+-
 
-                    <span
-                        id="kpi-product-count"
-                        class="text-sm font-bold">
-                        -
-                    </span>
+</div>
 
-                </div>
 
-            </div>
+</div>
 
-            <!-- 금리변동수 -->
-            <div class="bg-gray-50 rounded-lg px-3 py-3">
 
-                <div class="flex justify-between items-center">
 
-                    <span class="text-[11px] text-gray-500">
-                        금리변동수
-                    </span>
 
-                    <span
-                        id="kpi-change-count"
-                        class="text-sm font-bold">
-                        -
-                    </span>
 
-                </div>
+<!-- 상품수 -->
 
-            </div>
 
-        </div>
+<div class="bg-gray-50 rounded-xl p-3">
 
-    </div>
+
+<div class="text-xs text-gray-500">
+
+📦 상품수
+
+</div>
+
+
+<div
+id="kpi-product-count"
+class="mt-2 text-xl font-bold">
+
+-
+
+</div>
+
+
+</div>
+
+
+
+
+
+<!-- 금리변동건수 -->
+
+
+<div class="bg-gray-50 rounded-xl p-3">
+
+
+<div class="text-xs text-gray-500">
+
+⚡ 금리변동건수
+
+</div>
+
+
+<div
+id="kpi-change-count"
+class="mt-2 text-xl font-bold">
+
+-
+
+</div>
+
+
+</div>
+
+
+
+</div>
+
+
+</div>
+
 
 </div>
 
@@ -516,267 +463,55 @@ class="mt-3 text-xs text-blue-600 font-medium text-right">
 </div>
 
       <!-- 2. AI Assistant (위비 캐릭터 적용 영역) -->
-<div class="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm grid grid-cols-12 gap-3 items-stretch">
-
-
-  <!-- ======================================================
-       1. 위비 AI 브리핑 영역
-  ====================================================== -->
-
-  <div class="col-span-4 h-full">
-
-
-    <div class="bg-[#eef5ff] p-2 rounded-xl border border-gray-200 flex items-center justify-start gap-1 h-full">
-
-
-      <!-- 위비 캐릭터 -->
-      <img 
-        src="/static/images/wibee.png"
-        alt="위비 캐릭터" 
-        class="w-32 h-32 object-contain flex-shrink-0 -ml-2"
-      />
-
-
-
-      <!-- 위비 AI 브리핑 -->
-      <div class="flex-1 min-w-0">
-
-
-        <div class="text-xs font-bold text-gray-800 mb-1">
-          🐝 위비 AI 브리핑
-        </div>
-
-
-        <div class="text-xs font-bold text-gray-800 mb-1">
-          🟢 시장상태 :
-          <span class="text-blue-600">
-            안정
-          </span>
-        </div>
-
-
-
-        <p class="text-[11px] text-gray-600 leading-relaxed">
-
-          시장 안정세 유지<br/>
-
-          우리금융은 시장 평균 대비
-
-          <span class="font-bold text-blue-600">
-            +0.17%p
-          </span>
-
-          우위
-
-        </p>
-
-
-
-        <div class="flex gap-1 mt-2 text-[10px] whitespace-nowrap">
-
-
-          <span class="bg-white border px-1.5 py-0.5 rounded text-blue-600">
-            📈 상승 0건
-          </span>
-
-
-          <span class="bg-white border px-1.5 py-0.5 rounded text-red-500">
-            📉 하락 0건
-          </span>
-
-
-          <span class="bg-white border px-1.5 py-0.5 rounded text-orange-500">
-            🆕 신규 2건
-          </span>
-
-
-        </div>
-
-
-      </div>
-
-
-    </div>
-
-
-  </div>
-
-
-
-
-
-
-  <!-- ======================================================
-       2. AI 질문 + 답변 영역
-  ====================================================== -->
-
-
-  <div class="col-span-8 h-full">
-
-
-    <div class="grid grid-cols-2 gap-3 h-full">
-
-
-
-      <!-- ======================================================
-           AI 질문 영역
-      ====================================================== -->
-
-
-      <div class="bg-gray-50 rounded-xl border border-gray-100 p-3 h-full">
-
-
-        <div class="text-xs font-bold text-gray-700 mb-2">
-
-          🔍 AI 질문
-
-        </div>
-
-
-
-
-        <div class="flex gap-2">
-
-
-          <input
-
-            id="ai-question"
-
-            type="text"
-
-            value="우리금융 경쟁력은"
-
-            placeholder="질문 입력"
-
-            class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
-
+      <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm grid grid-cols-12 gap-5 items-center">
+        <!-- 위비 프로필 카드 -->
+        <div class="col-span-4 bg-[#f4f6f9] p-4 rounded-xl border border-gray-200 flex items-center gap-3">
+          <!-- 위비 캐릭터 이미지 -->
+          <img 
+            src="/static/images/wibee.png"
+            alt="위비 캐릭터" 
+            class="w-24 h-24 object-contain flex-shrink-0"
           />
-
-
-
-          <button
-
-            class="bg-[#1a58c8] text-white px-4 rounded-lg text-xs font-medium"
-
-          >
-
-            검색
-
-          </button>
-
-
+          <div>
+            <div class="text-xs font-bold text-gray-800 mb-1">
+              🟢 시장상태 : <span class="text-blue-600">안정</span>
+            </div>
+            <p class="text-[11px] text-gray-600 leading-relaxed">
+              오늘 시장은 안정세입니다.<br/>
+              우리금융은 시장 평균보다 <span class="font-bold text-blue-600">+0.17%p</span> 높으며, 2위 하나저축은행과의 격차는 <span class="font-bold text-blue-600">0.10%p</span> 입니다.
+            </p>
+            <div class="flex gap-1 mt-2 text-[10px]">
+              <span class="bg-white border px-1.5 py-0.5 rounded text-blue-600">📈 상승 0건</span>
+              <span class="bg-white border px-1.5 py-0.5 rounded text-red-500">📉 하락 0건</span>
+              <span class="bg-white border px-1.5 py-0.5 rounded text-orange-500">NEW 신규 2건</span>
+            </div>
+          </div>
         </div>
 
-
-
-
-
-        <div class="flex gap-1 mt-3">
-
-
-          <button
-
-            class="bg-white border border-gray-200 px-2 py-1 rounded text-[10px]"
-
-          >
-
-            시장현황
-
-          </button>
-
-
-
-          <button
-
-            class="bg-white border border-gray-200 px-2 py-1 rounded text-[10px]"
-
-          >
-
-            우리금융
-
-          </button>
-
-
-
-          <button
-
-            class="bg-white border border-gray-200 px-2 py-1 rounded text-[10px]"
-
-          >
-
-            경쟁사
-
-          </button>
-
-
+        <!-- AI 질의 및 버튼 영역 -->
+        <div class="col-span-8 space-y-3">
+          <div class="text-xs font-bold text-gray-700">무엇이든 물어보세요!</div>
+          <div class="flex gap-2">
+            <input 
+              type="text" 
+              value="우리금융 경쟁력은"
+              placeholder="예) 하나저축은행보다 높은 금리의 상품은?" 
+              class="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-xs focus:outline-none focus:border-blue-500"
+            />
+            <button class="bg-[#1a58c8] text-white px-6 py-2 rounded-lg text-xs font-medium hover:bg-blue-700">
+              검색
+            </button>
+          </div>
+          <div class="flex gap-2 text-xs">
+            <button class="border bg-gray-50 border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1 text-gray-700">
+              📋 오늘의 브리핑 보기
+            </button>
+            <button class="border bg-gray-50 border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-100 flex items-center gap-1 text-gray-700">
+              📊 AI 분석센터 열기 >
+            </button>
+          </div>
         </div>
-
-
       </div>
-
-
-
-
-
-
-
-
-      <!-- ======================================================
-           AI 답변 요약 영역
-      ====================================================== -->
-
-
-      <div class="bg-blue-50 rounded-xl border border-blue-100 p-3 h-full">
-
-
-        <div class="text-xs font-bold text-blue-700 mb-2">
-
-          💡 AI 답변 요약
-
-        </div>
-
-
-
-
-        <div
-
-          id="ai-mini-answer"
-
-          class="text-[11px] text-gray-700 leading-relaxed min-h-[55px]"
-
-        >
-
-          검색 결과가 표시됩니다.
-
-
-        </div>
-
-
-
-
-        <button
-
-          class="mt-2 text-[11px] text-blue-600 font-medium"
-
-        >
-
-          📊 상세 분석보기 >
-
-        </button>
-
-
-      </div>
-
-
-
-    </div>
-
-
-  </div>
-
-
-
-</div>
 
       <!-- 순위 및 변동현황 4분할 테이블 -->
       <div class="grid grid-cols-4 gap-4">
