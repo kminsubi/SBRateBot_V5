@@ -49,6 +49,13 @@ DATA_FILE = os.path.join(
 )
 
 
+PREVIOUS_DATA_FILE = os.path.join(
+    BASE_DIR,
+    "data",
+    "previous_rates.json"
+)
+
+
 
 # -------------------------------
 # 기간 설정
@@ -135,40 +142,75 @@ def load_rates():
 
 
 # -------------------------------
+# 전일 데이터 로드
+# -------------------------------
+
+def load_previous_rates():
+
+    try:
+        with open(
+            PREVIOUS_DATA_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
+            data = json.load(f)
+
+        if isinstance(data, list):
+            return [x for x in data if isinstance(x, dict)]
+
+        if isinstance(data, dict):
+            for key in ["REC", "data", "items", "rates"]:
+                value = data.get(key)
+                if isinstance(value, list):
+                    return [x for x in value if isinstance(x, dict)]
+
+        return []
+
+    except Exception:
+        return []
+
+
+# -------------------------------
 # 숫자 변환
 # -------------------------------
 
 
 def safe_float(value):
 
-
     try:
 
-
-        if value in [
-
-            None,
-
-            "",
-
-            "-"
-
-        ]:
-
-
+        if value in [None, "", "-"]:
             return None
 
+        if isinstance(value, (int, float)):
+            return float(value)
 
+        text = str(value).strip()
+        if not text or text == "-":
+            return None
 
-        return float(value)
+        # 크롤러/JSON 버전에 따라 +0.10%p, ▲0.10%p, -0.10, 0.10% 등
+        # 다양한 표시형식이 들어올 수 있으므로 숫자로 정규화한다.
+        negative_marker = ("▲" in text or "▼" in text)
+        text = (
+            text
+            .replace(",", "")
+            .replace("%p", "")
+            .replace("%", "")
+            .replace("▲", "")
+            .replace("▼", "")
+            .replace("+", "")
+            .strip()
+        )
 
+        number = float(text)
+        if negative_marker and number > 0:
+            number = -number
 
+        return number
 
     except Exception:
-
-
         return None
-
 
 
 
@@ -1144,6 +1186,25 @@ def build_products(
 
     raw_data = load_rates()
 
+    previous_data = load_previous_rates()
+
+    previous_map = {}
+
+    for prev in previous_data:
+        prev_bank = normalize(
+            prev.get("bank")
+            or prev.get("kor_co_nm")
+            or prev.get("bank_name")
+            or ""
+        )
+        prev_product = normalize(
+            prev.get("product")
+            or prev.get("fin_prdt_nm")
+            or prev.get("product_name")
+            or ""
+        )
+        if prev_bank and prev_product:
+            previous_map[(prev_bank, prev_product)] = prev
 
 
     period = PERIOD_MAP.get(
@@ -1212,39 +1273,63 @@ def build_products(
 
 
 
-        change = safe_float(
+        # 전일 대비 금리변동값
+        # crawler 버전에 따라 change_12 / change_12m / diff 계열이
+        # 혼용될 수 있어 모두 지원하고, 없으면 previous_rates.json으로 계산한다.
+        change_candidates = [
+            item.get(change_field),
+            item.get(f"change_{period}m"),
+            item.get(f"diff_{period}"),
+            item.get(f"diff_{period}m"),
+            item.get("change"),
+            item.get("change_rate"),
+            item.get("diff")
+        ]
 
-    item.get(
+        change = None
 
-        change_field
+        for candidate in change_candidates:
+            parsed = safe_float(candidate)
+            if parsed is not None:
+                change = parsed
+                break
 
-    )
+        bank_for_change = str(
+            item.get("bank")
+            or item.get("kor_co_nm")
+            or item.get("bank_name")
+            or ""
+        ).strip()
+        product_for_change = str(
+            item.get("product")
+            or item.get("fin_prdt_nm")
+            or item.get("product_name")
+            or ""
+        ).strip()
 
-    or
+        prev_item = previous_map.get(
+            (normalize(bank_for_change), normalize(product_for_change))
+        )
 
-    item.get(
+        if prev_item:
+            prev_rate = safe_float(
+                prev_item.get(rate_field)
+                or prev_item.get(f"intr_rate_{period}")
+                or prev_item.get("intr_rate2")
+                or prev_item.get("max_rate")
+                or prev_item.get("rate")
+            )
 
-        "change"
+            if prev_rate is not None and rate is not None:
+                calculated_change = round(rate - prev_rate, 4)
 
-    )
-
-    or
-
-    item.get(
-
-        "change_rate"
-
-    )
-
-)
-
-
+                # 명시적 change 값이 누락되었거나 0인데 실제 전일금리가 다르면
+                # previous_rates 기준 계산값을 우선 사용한다.
+                if change is None or (change == 0 and calculated_change != 0):
+                    change = calculated_change
 
         if change is None:
-
-
             change = 0
-
 
 
         bank = str(
@@ -2921,100 +3006,200 @@ def api_woori():
 
 
 @app.route("/api/rates")
-
 def api_rates():
 
-
     products = unique_products(
-
         build_products(
-
             "12개월"
-
         )
-
     )
-
-
 
     bank_best = get_bank_best_rates(
-
         products
-
     )
-
-
 
     bank_best = [
-
         x
-
         for x in bank_best
-
         if x["rate"] > 0
-
     ]
 
-
-
     bank_best.sort(
-
-        key=lambda x:
-
-            x["rate"],
-
+        key=lambda x: x["rate"],
         reverse=True
-
     )
 
+    # 기본은 TOP10, ?all=1 요청 시 전체 은행 순위 반환
+    show_all = str(
+        request.args.get(
+            "all",
+            "0"
+        )
+    ).lower() in [
+        "1",
+        "true",
+        "yes",
+        "all"
+    ]
 
+    target_items = (
+        bank_best
+        if show_all
+        else bank_best[:10]
+    )
 
     result = []
 
-
-
-    for idx,item in enumerate(
-
-        bank_best[:10],
-
+    for idx, item in enumerate(
+        target_items,
         start=1
-
     ):
 
-
         result.append({
-
-            "rank":
-
-                idx,
-
-
-            "bank":
-
-                item["bank"],
-
-
-            "product":
-
-                item["product"],
-
-
-            "rate":
-
-                item["rate"],
-
-
-            "change":
-
-                item["change"]
-
+            "rank": idx,
+            "bank": item["bank"],
+            "product": item["product"],
+            "rate": item["rate"],
+            "change": item.get(
+                "change",
+                0
+            )
         })
-
-
 
     return jsonify(result)
 
 
+# -------------------------------
+# 전일 대비 금리 상승 / 하락 TOP5
+# 은행별 12개월 최고금리 상품 기준
+# -------------------------------
+
+@app.route("/api/rate-changes")
+def api_rate_changes():
+
+    current_rows = load_rates()
+    previous_rows = load_previous_rates()
+
+    def get_bank(row):
+        return str(
+            row.get("bank")
+            or row.get("kor_co_nm")
+            or row.get("bank_name")
+            or ""
+        ).strip()
+
+    def get_product(row):
+        return str(
+            row.get("product")
+            or row.get("fin_prdt_nm")
+            or row.get("product_name")
+            or ""
+        ).strip()
+
+    def get_12m_rate(row):
+        for field in [
+            "top_12m",
+            "rate_12m",
+            "intr_rate2",
+            "max_rate",
+            "rate"
+        ]:
+            value = safe_float(row.get(field))
+            if value is not None and value > 0:
+                return value
+        return None
+
+    def bank_best_map(rows):
+        result = {}
+        for row in rows:
+            bank = get_bank(row)
+            rate = get_12m_rate(row)
+            if not bank or rate is None:
+                continue
+
+            key = normalize(bank)
+            current = result.get(key)
+
+            if current is None or rate > current["rate"]:
+                result[key] = {
+                    "bank": bank,
+                    "product": get_product(row),
+                    "rate": rate
+                }
+        return result
+
+    current_best = bank_best_map(current_rows)
+    previous_best = bank_best_map(previous_rows)
+
+    changes = []
+
+    for key, current in current_best.items():
+        previous = previous_best.get(key)
+        if not previous:
+            continue
+
+        change = round(
+            current["rate"] - previous["rate"],
+            4
+        )
+
+        if change == 0:
+            continue
+
+        changes.append({
+            "bank": current["bank"],
+            "product": current["product"],
+            "rate": round(current["rate"], 2),
+            "previous_rate": round(previous["rate"], 2),
+            "change": change,
+            "change_value": change
+        })
+
+    # 이전 데이터가 없거나 매칭이 적은 경우 current 자체의 explicit change를 보강
+    if not changes:
+        products = unique_products(build_products("12개월"))
+        by_bank = {}
+
+        for item in products:
+            bank = str(item.get("bank") or "").strip()
+            change = safe_float(item.get("change"))
+            if not bank or change is None or change == 0:
+                continue
+
+            key = normalize(bank)
+            existing = by_bank.get(key)
+            if existing is None or abs(change) > abs(existing["change"]):
+                by_bank[key] = {
+                    "bank": bank,
+                    "product": item.get("product", ""),
+                    "rate": round(float(item.get("rate") or 0), 2),
+                    "previous_rate": round(float(item.get("rate") or 0) - change, 2),
+                    "change": change,
+                    "change_value": change
+                }
+
+        changes = list(by_bank.values())
+
+    up_all = sorted(
+        [x for x in changes if x["change"] > 0],
+        key=lambda x: x["change"],
+        reverse=True
+    )
+
+    down_all = sorted(
+        [x for x in changes if x["change"] < 0],
+        key=lambda x: x["change"]
+    )
+
+    return jsonify({
+        "up_top5": up_all[:5],
+        "down_top5": down_all[:5],
+        "up_all": up_all,
+        "down_all": down_all,
+        "up_count": len(up_all),
+        "down_count": len(down_all),
+        "change_count": len(up_all) + len(down_all)
+    })
 
 
 # -------------------------------

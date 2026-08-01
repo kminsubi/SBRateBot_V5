@@ -15,6 +15,9 @@ let dashboardKPIData = {};
 
 let wooriMarketData = {};
 
+window.sbLastAIQuestion = window.sbLastAIQuestion || "";
+window.sbLastAIAnswer = window.sbLastAIAnswer || "";
+
 
 
 console.log(
@@ -88,6 +91,33 @@ function initDashboard() {
 
     fetchAISummary();
 
+
+    /*
+        WIBEE AI BRIEFING
+    */
+
+    fetchWibeeBriefing();
+
+
+    /*
+        MARKET TOP10
+    */
+
+    fetchRatesData();
+
+
+    /*
+        RATE CHANGE TOP5
+    */
+
+    fetchFinancialData();
+
+
+    /*
+        UI EVENT BINDING
+    */
+
+    setupEventListeners();
 
 
 }
@@ -175,18 +205,18 @@ async function fetchKPI() {
 async function fetchAISummary(){
 
 
-    const data =
-        await apiFetch(
-            "/api/ai"
-        );
-
-
+    const [data, kpiData, freshWooriData] = await Promise.all([
+        apiFetch("/api/ai"),
+        apiFetch("/api/kpi"),
+        apiFetch("/api/woori")
+    ]);
 
     if(!data){
-
         return;
-
     }
+
+    const marketKpi = kpiData || {};
+    const marketWoori = freshWooriData || wooriPositionData || {};
 
 
 
@@ -354,7 +384,7 @@ ${
                     <div
                     class="text-sm font-bold text-gray-800"
                     >
-                        299개
+                        ${Number(marketKpi.product_count || 0).toLocaleString()}개
                     </div>
 
                 </div>
@@ -376,7 +406,7 @@ ${
                     <div
                     class="text-sm font-bold text-blue-700"
                     >
-                        3.83%
+                        ${Number(marketKpi.average_rate || 0).toFixed(2)}%
                     </div>
 
                 </div>
@@ -398,7 +428,7 @@ ${
                     <div
                     class="text-sm font-bold text-blue-700"
                     >
-                        4.20%
+                        ${Number(marketKpi.max_rate || 0).toFixed(2)}%
                     </div>
 
                     <div
@@ -426,7 +456,7 @@ ${
                     <div
                     class="text-sm font-bold text-gray-700"
                     >
-                        2.00%
+                        ${Number(marketKpi.min_rate || 0).toFixed(2)}%
                     </div>
 
                     <div
@@ -454,7 +484,7 @@ ${
                     <div
                     class="text-sm font-bold text-orange-600"
                     >
-                        2.20%p
+                        ${(Number(marketKpi.max_rate || 0) - Number(marketKpi.min_rate || 0)).toFixed(2)}%p
                     </div>
 
                 </div>
@@ -531,9 +561,9 @@ text-sm
 "
 >
 ${
-wooriPositionData.market_rank
+marketWoori.market_rank
 ?
-wooriPositionData.market_rank + "위"
+marketWoori.market_rank + "위"
 :
 "-"
 }
@@ -572,10 +602,10 @@ text-sm
 "
 >
 ${
-wooriPositionData.best_rate
+marketWoori.rate
 ?
 Number(
-    wooriPositionData.best_rate
+    marketWoori.rate
 )
 .toFixed(2)
 +
@@ -622,7 +652,7 @@ text-sm
 ${
 
 Number(
-    wooriPositionData.avg_gap || 0
+    marketWoori.average_gap || 0
 )
 >= 0
 
@@ -631,7 +661,7 @@ Number(
 `
 <span class="text-blue-600">
 +${Number(
-    wooriPositionData.avg_gap
+    marketWoori.average_gap
 )
 .toFixed(2)}%p
 </span>
@@ -644,7 +674,7 @@ Number(
 <span class="text-red-600">
 ▲${Math.abs(
 Number(
-    wooriPositionData.avg_gap
+    marketWoori.average_gap
 )
 )
 .toFixed(2)}%p
@@ -845,7 +875,7 @@ leading-5
     const modal =
 
         document.getElementById(
-            "ai-detail-content"
+            "market-detail-content"
         );
 
 
@@ -933,7 +963,7 @@ leading-5
 
                     <button
 
-                        id="ai-detail-btn"
+                        id="market-detail-btn"
 
                         class="text-xs text-blue-600 font-semibold hover:underline"
 
@@ -1497,6 +1527,119 @@ function renderWooriPosition(data){
 }
 
 /* ==========================================================
+   WIBEE AI BRIEFING
+   /api/kpi + /api/woori
+========================================================== */
+
+async function fetchWibeeBriefing(){
+
+    const [kpi, woori, changes] = await Promise.all([
+        apiFetch("/api/kpi"),
+        apiFetch("/api/woori"),
+        apiFetch("/api/rate-changes")
+    ]);
+
+    if(!kpi || !woori){
+        return;
+    }
+
+    renderWibeeBriefing(kpi, woori, changes || {});
+}
+
+
+function renderWibeeBriefing(kpi, woori, changes = {}){
+
+    const status = document.getElementById("wibee-market-status");
+    const judgementEl = document.getElementById("wibee-judgement");
+    const riseEl = document.getElementById("wibee-rise-count");
+    const fallEl = document.getElementById("wibee-fall-count");
+    const changeEl = document.getElementById("wibee-change-count");
+    const wooriRateEl = document.getElementById("wibee-woori-rate");
+    const rankEl = document.getElementById("wibee-rank");
+    const bestRateEl = document.getElementById("wibee-best-rate");
+    const averageRateEl = document.getElementById("wibee-average-rate");
+
+    const gap = Number(woori.average_gap ?? kpi.average_gap ?? 0);
+    const changeCount = Number(
+        changes.change_count ??
+        changes.total_change_count ??
+        kpi.change_count ??
+        0
+    );
+    const riseCount = Number(
+        changes.up_count ??
+        changes.rise_count ??
+        (Array.isArray(changes.up_all) ? changes.up_all.length : 0)
+    );
+    const fallCount = Number(
+        changes.down_count ??
+        changes.fall_count ??
+        (Array.isArray(changes.down_all) ? changes.down_all.length : 0)
+    );
+
+    let marketStatus = "안정";
+    let dotClass = "bg-emerald-500";
+    let textClass = "text-emerald-600";
+
+    if(changeCount >= 120){
+        marketStatus = "변동 확대";
+        dotClass = "bg-orange-500";
+        textClass = "text-orange-600";
+    }
+    else if(changeCount >= 80){
+        marketStatus = "변동 관찰";
+        dotClass = "bg-amber-400";
+        textClass = "text-amber-600";
+    }
+
+    if(status){
+        status.className = `inline-flex items-center gap-1 ${textClass}`;
+        status.innerHTML = `<span class="w-2 h-2 rounded-full ${dotClass}"></span>${marketStatus}`;
+    }
+
+    if(riseEl){ riseEl.textContent = Number.isFinite(riseCount) ? riseCount : 0; }
+    if(fallEl){ fallEl.textContent = Number.isFinite(fallCount) ? fallCount : 0; }
+    if(changeEl){ changeEl.textContent = Number.isFinite(changeCount) ? changeCount : 0; }
+
+    const wooriRate = Number(woori.rate ?? woori.best_rate ?? 0);
+    const bestRate = Number(kpi.max_rate ?? kpi.highest_rate ?? 0);
+    const averageRate = Number(kpi.average_rate ?? kpi.avg_rate ?? 0);
+    const rank = woori.market_rank ?? woori.rank ?? "-";
+    const total = woori.market_total ?? woori.total ?? "-";
+
+    if(wooriRateEl){
+        wooriRateEl.textContent = Number.isFinite(wooriRate) && wooriRate > 0 ? `${wooriRate.toFixed(2)}%` : "-";
+    }
+    if(bestRateEl){
+        bestRateEl.textContent = Number.isFinite(bestRate) && bestRate > 0 ? `${bestRate.toFixed(2)}%` : "-";
+    }
+    if(averageRateEl){
+        averageRateEl.textContent = Number.isFinite(averageRate) && averageRate > 0 ? `${averageRate.toFixed(2)}%` : "-";
+    }
+    if(rankEl){
+        rankEl.textContent = rank !== "-" ? `${rank}위 / ${total}` : "-";
+    }
+
+    if(judgementEl){
+        let judgement = "시장 평균 수준의 금리 경쟁이 이어지고 있습니다.";
+        if(gap < -0.20){
+            judgement = "우리금융은 시장평균을 하회해 상위권과의 금리 격차 점검이 필요합니다.";
+        }
+        else if(gap < 0){
+            judgement = "우리금융은 시장평균을 소폭 하회하며 최고금리 중심의 경쟁을 모니터링할 필요가 있습니다.";
+        }
+        else if(gap > 0.20){
+            judgement = "우리금융은 시장평균을 뚜렷하게 상회하며 높은 금리 경쟁력을 유지하고 있습니다.";
+        }
+        else if(gap > 0){
+            judgement = "우리금융은 시장평균을 소폭 상회하며 안정적인 금리 경쟁력을 유지하고 있습니다.";
+        }
+        judgementEl.textContent = judgement;
+    }
+}
+
+
+/* ==========================================================
    TOP 10 RATE RANKING
    /api/rates
 ========================================================== */
@@ -1551,10 +1694,9 @@ function renderTop10(items) {
     top5Body.innerHTML = "";
     top10Body.innerHTML = "";
 
-    if (!items || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
 
-        top5Body.innerHTML =
-        `
+        const emptyRow = `
         <tr>
             <td colspan="4" class="text-center py-4 text-gray-400">
                 데이터 없음
@@ -1562,29 +1704,21 @@ function renderTop10(items) {
         </tr>
         `;
 
-        top10Body.innerHTML =
-        `
-        <tr>
-            <td colspan="4" class="text-center py-4 text-gray-400">
-                데이터 없음
-            </td>
-        </tr>
-        `;
-
+        top5Body.innerHTML = emptyRow;
+        top10Body.innerHTML = emptyRow;
         return;
-
     }
 
     items
         .slice(0, 10)
         .forEach((item, index) => {
 
-            const tr =
-                document.createElement("tr");
+            const tr = document.createElement("tr");
 
             const bank =
                 item.kor_co_nm ||
                 item.bank_name ||
+                item.bank ||
                 "-";
 
             const rate =
@@ -1592,61 +1726,166 @@ function renderTop10(items) {
                 item.max_rate ??
                 item.intr_rate ??
                 item.base_rate ??
-                "-";
+                item.rate ??
+                null;
 
-            const diff =
+            const rawDiff =
                 item.diff ??
                 item.change ??
-                "-";
+                item.change_value ??
+                0;
 
-            tr.innerHTML =
-            `
-            <td class="py-2">
+            const diffValue = Number(rawDiff);
+            let diffHtml = '<span class="text-gray-400">-</span>';
 
-                ${index + 1}
+            if(!Number.isNaN(diffValue) && diffValue > 0){
+                diffHtml = `<span class="text-blue-600">+${diffValue.toFixed(2)}%p</span>`;
+            }
+            else if(!Number.isNaN(diffValue) && diffValue < 0){
+                diffHtml = `<span class="text-red-500">▲${Math.abs(diffValue).toFixed(2)}%p</span>`;
+            }
+            else if(typeof rawDiff === "string" && rawDiff.trim() && rawDiff !== "-"){
+                diffHtml = rawDiff;
+            }
 
+            const isWoori = String(bank).includes("우리금융");
+
+            if(isWoori){
+                tr.className = "bg-blue-50/80 font-bold text-blue-700 [box-shadow:inset_0_0_0_1px_#bfdbfe]";
+            }
+
+            const rankClass = index < 3
+                ? "bg-orange-100 text-orange-600"
+                : isWoori
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600";
+
+            tr.innerHTML = `
+            <td class="py-2 text-center">
+                <span class="${rankClass} w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold">
+                    ${index + 1}
+                </span>
             </td>
-
-            <td class="py-2">
-
-                ${bank}
-
+            <td class="py-2 text-center truncate px-1" title="${bank}">${bank}</td>
+            <td class="py-2 text-center font-semibold ${isWoori ? "text-blue-700" : "text-blue-600"}">
+                ${rate !== null && !Number.isNaN(Number(rate)) ? Number(rate).toFixed(2) + "%" : "-"}
             </td>
-
-            <td class="py-2 text-right font-semibold text-blue-600">
-
-                ${
-                    rate !== "-"
-                    ? Number(rate).toFixed(2) + "%"
-                    : "-"
-                }
-
-            </td>
-
-            <td class="py-2 text-right">
-
-                ${diff}
-
+            <td class="py-2 text-center font-semibold whitespace-nowrap">
+                ${diffHtml}
             </td>
             `;
 
             if (index < 5) {
-
-                top5Body.appendChild(
-                    tr
-                );
-
-            } else {
-
-                top10Body.appendChild(
-                    tr
-                );
-
+                top5Body.appendChild(tr);
+            }
+            else {
+                top10Body.appendChild(tr);
             }
 
         });
-
 }
+
+
+
+/* ==========================================================
+   시장 전체 순위 MODAL
+========================================================== */
+
+async function openAllRatesModal(){
+
+    const modal = document.getElementById("top10-all-modal");
+    const tbody = document.getElementById("top10-all-table-body");
+
+    if(!modal || !tbody){
+        return;
+    }
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" class="py-6 text-center text-gray-400">
+                전체 순위를 불러오는 중입니다.
+            </td>
+        </tr>
+    `;
+
+    const data = await apiFetch("/api/rates?all=1");
+    const items = Array.isArray(data) ? data : [];
+
+    if(items.length === 0){
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="py-6 text-center text-gray-400">
+                    순위 데이터가 없습니다.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = "";
+
+    items.forEach((item, index) => {
+
+        const bank = item.bank || item.bank_name || item.kor_co_nm || "-";
+        const product = item.product || item.product_name || item.fin_prdt_nm || "-";
+        const rate = Number(item.rate ?? item.max_rate ?? item.intr_rate2);
+        const change = Number(item.change ?? item.diff ?? 0);
+        const isWoori = String(bank).includes("우리금융");
+
+        let changeHtml = '<span class="text-gray-400">-</span>';
+        if(Number.isFinite(change) && change > 0){
+            changeHtml = `<span class="text-blue-600">+${change.toFixed(2)}%p</span>`;
+        }
+        else if(Number.isFinite(change) && change < 0){
+            changeHtml = `<span class="text-red-500">▲${Math.abs(change).toFixed(2)}%p</span>`;
+        }
+
+        const tr = document.createElement("tr");
+        if(isWoori){
+            tr.className = "bg-blue-50/80 font-bold text-blue-700 [box-shadow:inset_0_0_0_1px_#bfdbfe]";
+        }
+
+        tr.innerHTML = `
+            <td class="py-2 text-center">${item.rank ?? index + 1}</td>
+            <td class="py-2 text-center ${isWoori ? "font-bold text-blue-700" : "text-gray-700"}">${bank}</td>
+            <td class="py-2 text-center text-gray-500 truncate" title="${product}">${product}</td>
+            <td class="py-2 text-right font-semibold ${isWoori ? "text-blue-700" : "text-gray-800"}">${Number.isFinite(rate) ? rate.toFixed(2) + "%" : "-"}</td>
+            <td class="py-2 text-right whitespace-nowrap">${changeHtml}</td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+function closeAllRatesModal(){
+    const modal = document.getElementById("top10-all-modal");
+    if(!modal){
+        return;
+    }
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+document.addEventListener("click", function(e){
+    if(e.target.closest("#top10-all-btn")){
+        openAllRatesModal();
+        return;
+    }
+
+    if(e.target.closest("#top10-all-close")){
+        closeAllRatesModal();
+        return;
+    }
+
+    const modal = document.getElementById("top10-all-modal");
+    if(modal && e.target === modal){
+        closeAllRatesModal();
+    }
+});
+
 
 
 
@@ -1659,237 +1898,146 @@ function renderTop10(items) {
 
 async function fetchFinancialData(){
 
+    // V6: 백엔드 전용 변동 API를 우선 사용
+    const data = await apiFetch(
+        "/api/rate-changes"
+    );
 
-    const data =
-        await apiFetch(
-            "/api/financial"
+    if(data){
+
+        const upList = Array.isArray(data.up_top5)
+            ? data.up_top5
+            : [];
+
+        const downList = Array.isArray(data.down_top5)
+            ? data.down_top5
+            : [];
+
+        console.log(
+            "RATE CHANGE API",
+            data
         );
 
+        renderRateChanges(
+            upList,
+            downList
+        );
 
-    if(!data){
         return;
     }
 
-
-    renderRateChanges(
-
-        data.up_top5 || [],
-
-        data.down_top5 || []
-
+    // API 실패 시 기존 /api/rates 결과를 이용한 최소 fallback
+    const rates = await apiFetch(
+        "/api/rates?all=1"
     );
 
+    const items = Array.isArray(rates)
+        ? rates
+        : [];
 
+    const normalized = items
+        .map(item => ({
+            ...item,
+            change_value: Number(item.change ?? 0)
+        }))
+        .filter(item => Number.isFinite(item.change_value));
+
+    const upList = normalized
+        .filter(item => item.change_value > 0)
+        .sort((a,b) => b.change_value - a.change_value)
+        .slice(0,5);
+
+    const downList = normalized
+        .filter(item => item.change_value < 0)
+        .sort((a,b) => a.change_value - b.change_value)
+        .slice(0,5);
+
+    renderRateChanges(
+        upList,
+        downList
+    );
 }
-
-
 
 function renderRateChanges(
     upList,
     downList
 ){
 
+    const up = document.getElementById("rates-up-list");
+    const down = document.getElementById("rates-down-list");
 
-    const up =
-        document.getElementById(
-            "rates-up-list"
-        );
+    const renderRows = (target, list, direction) => {
 
-
-    const down =
-        document.getElementById(
-            "rates-down-list"
-        );
-
-
-
-    if(up){
-
-        up.innerHTML="";
-
-
-        if(upList.length===0){
-
-            up.innerHTML =
-            `
-            <li class="empty-msg">
-            변동 없음
-            </li>
-            `;
-
+        if(!target){
+            return;
         }
 
+        target.innerHTML = "";
 
-        upList
-        .slice(0,5)
-        .forEach(item=>{
-
-
-            const li =
-                document.createElement(
-                    "li"
-                );
-
-
-            li.className =
-                "change-item";
-
-
-            li.innerHTML =
-            `
-
-            <span>
-
-            ${
-            item.kor_co_nm ||
-            item.bank_name ||
-            "-"
-            }
-
-            <br>
-
-            <small>
-
-            ${
-            item.fin_prdt_nm ||
-            item.product_name ||
-            ""
-
-            }
-
-            </small>
-
-            </span>
-
-
-            <strong class="status-up">
-
-            +
-
-            ${
-            item.change_value ||
-            (
-            item.new_rate-item.old_rate
-            )
-            .toFixed(2)
-            }
-
-            %p
-
-            </strong>
-
-
+        if(!Array.isArray(list) || list.length === 0){
+            target.innerHTML = `
+            <tr>
+                <td colspan="4" class="py-4 text-center text-gray-400 font-normal">
+                    ${direction === "up" ? "금리 상승 없음" : "금리 하락 없음"}
+                </td>
+            </tr>
             `;
-
-
-            up.appendChild(li);
-
-
-        });
-
-
-    }
-
-
-
-
-    if(down){
-
-
-        down.innerHTML="";
-
-
-
-        if(downList.length===0){
-
-
-            down.innerHTML =
-            `
-            <li class="empty-msg">
-            변동 없음
-            </li>
-            `;
-
+            return;
         }
 
+        list.slice(0, 5).forEach((item, index) => {
 
+            const bank =
+                item.kor_co_nm ||
+                item.bank_name ||
+                item.bank ||
+                "-";
 
-        downList
-        .slice(0,5)
-        .forEach(item=>{
+            const currentRateRaw =
+                item.rate ??
+                item.current_rate ??
+                item.new_rate ??
+                item.intr_rate2 ??
+                item.max_rate ??
+                null;
 
+            const currentRate = Number(currentRateRaw);
 
-            const li =
-                document.createElement(
-                    "li"
-                );
+            let value = Number(
+                item.change_value ??
+                item.change ??
+                ((Number(item.new_rate) || 0) - (Number(item.old_rate) || 0))
+            );
 
-
-            li.className =
-                "change-item";
-
-
-
-            li.innerHTML =
-            `
-
-            <span>
-
-            ${
-            item.kor_co_nm ||
-            item.bank_name ||
-            "-"
+            if(Number.isNaN(value)){
+                value = 0;
             }
 
+            const absValue = Math.abs(value).toFixed(2);
+            const tr = document.createElement("tr");
 
-            <br>
-
-            <small>
-
-            ${
-            item.fin_prdt_nm ||
-            item.product_name ||
-            ""
-
+            const isWoori = String(bank).includes("우리금융");
+            if(isWoori){
+                tr.className = "bg-blue-50/80 font-bold text-blue-700 [box-shadow:inset_0_0_0_1px_#bfdbfe]";
             }
 
-            </small>
-
-
-            </span>
-
-
-
-            <strong class="status-down">
-
-
-            ${
-            item.change_value ||
-            (
-            item.new_rate-item.old_rate
-            )
-            .toFixed(2)
-            }
-
-            %p
-
-
-            </strong>
-
-
+            tr.innerHTML = `
+                <td class="py-2 text-center ${isWoori ? "text-blue-700" : "text-gray-500"}">${index + 1}</td>
+                <td class="py-2 text-center px-1 ${isWoori ? "text-blue-700 font-bold" : "text-gray-700"} truncate" title="${bank}">${bank}</td>
+                <td class="py-2 text-center text-xs font-semibold whitespace-nowrap ${isWoori ? "text-blue-700" : "text-gray-700"}">
+                    ${Number.isFinite(currentRate) ? currentRate.toFixed(2) + "%" : "-"}
+                </td>
+                <td class="py-2 text-center text-xs font-semibold whitespace-nowrap ${isWoori ? "text-blue-700 font-bold" : (direction === "up" ? "text-blue-600" : "text-red-500")}">
+                    ${direction === "up" ? "+" : "▲"}${absValue}%p
+                </td>
             `;
 
-
-            down.appendChild(li);
-
-
+            target.appendChild(tr);
         });
+    };
 
-
-
-    }
-
-
+    renderRows(up, upList, "up");
+    renderRows(down, downList, "down");
 }
 
 
@@ -2109,51 +2257,61 @@ function renderAllProductsTable(
 async function handleAISearch(event){
 
 
-    event.preventDefault();
+    if(event){
 
+        event.preventDefault();
+
+    }
 
 
     const input =
+        document.getElementById(
+            "ai-question"
+        )
+        ||
         document.getElementById(
             "ai-query-input"
         );
 
 
+    const answerBox =
+        document.getElementById(
+            "ai-mini-answer"
+        );
+
 
     if(!input){
-        return;
-    }
 
+        console.log(
+            "AI 질문 입력창 없음"
+        );
+
+        return;
+
+    }
 
 
     const query =
         input.value.trim();
 
 
-
     if(!query){
+
         return;
+
     }
 
 
+    if(answerBox){
 
-    appendChatMessage(
-        query,
-        "user-message"
-    );
+        answerBox.innerHTML =
+            `
+            <span class="text-gray-400">
+            AI가 분석 중입니다...
+            </span>
+            `;
 
-
-
-    input.value="";
-
-
-
-    const loading =
-        appendChatMessage(
-            "Gemini AI가 분석 중입니다...",
-            "ai-message"
-        );
-
+    }
 
 
     try{
@@ -2164,49 +2322,164 @@ async function handleAISearch(event){
                 "/api/ai/search",
                 {
 
-                method:"POST",
+                    method:"POST",
 
-                headers:{
-                    "Content-Type":
-                    "application/json"
-                },
+                    headers:{
+                        "Content-Type":
+                        "application/json"
+                    },
 
-
-                body:
-                JSON.stringify({
-                    query:query
-                })
+                    body:
+                        JSON.stringify({
+                            question:query
+                        })
 
                 }
             );
 
+
+        if(!response.ok){
+
+            throw new Error(
+                `AI API Error : ${response.status}`
+            );
+
+        }
 
 
         const data =
             await response.json();
 
 
-
-        removeChatMessage(
-            loading
-        );
-
-
-
-        appendChatMessage(
-
+        const answer =
             data.answer ||
             data.result ||
-            "분석 결과가 없습니다.",
+            data.message ||
+            "분석 결과가 없습니다.";
 
-            "ai-message"
+        const normalizeAIAnswerHtml = (value) => {
+            let text = String(value ?? "")
+                .replace(/^\s*Gemini AI 답변\s*/i, "")
+                .replace(/^\s*제미나이 AI 답변\s*/i, "");
 
+            // API가 <span>, <br> 등을 엔티티로 반환한 경우 한 번 복원
+            if(/&lt;\/?(?:span|br|strong|b|div|p)\b/i.test(text)){
+                const textarea = document.createElement("textarea");
+                textarea.innerHTML = text;
+                text = textarea.value;
+            }
+
+            const template = document.createElement("template");
+            text = text
+                .replace(/\r\n/g, "\n")
+                .replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n");
+
+            template.innerHTML = text.replace(/\n/g, "<br>");
+            template.content.querySelectorAll("script, iframe, object, embed, style").forEach(el => el.remove());
+            template.content.querySelectorAll("*").forEach(el => {
+                [...el.attributes].forEach(attr => {
+                    if(/^on/i.test(attr.name)) el.removeAttribute(attr.name);
+                    if((attr.name === "href" || attr.name === "src") && /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
+                });
+            });
+            return template.innerHTML;
+        };
+
+        const cleanAnswerHtml = normalizeAIAnswerHtml(answer);
+        const plainHolder = document.createElement("div");
+        plainHolder.innerHTML = cleanAnswerHtml;
+        const cleanAnswerText = plainHolder.innerText.trim();
+
+        window.sbLastAIQuestion = query;
+        window.sbLastAIAnswerText = cleanAnswerText;
+
+        const applyRateColors = (root) => {
+            root.querySelectorAll(".rate-change.increase").forEach(el => {
+                el.classList.add("text-blue-600", "font-semibold");
+            });
+            root.querySelectorAll(".rate-change.decrease").forEach(el => {
+                el.classList.add("text-red-600", "font-semibold");
+            });
+            root.querySelectorAll(".rate-change:not(.increase):not(.decrease)").forEach(el => {
+                el.classList.add("text-gray-500");
+            });
+        };
+
+        const decoratePlainRateChanges = (root) => {
+            const walker = document.createTreeWalker(
+                root,
+                NodeFilter.SHOW_TEXT
+            );
+            const nodes = [];
+            while(walker.nextNode()){
+                const node = walker.currentNode;
+                if(node.parentElement?.closest(".rate-change")) continue;
+                if(/[+▲]\s*\d+(?:\.\d+)?%p/.test(node.nodeValue || "")){
+                    nodes.push(node);
+                }
+            }
+
+            nodes.forEach(node => {
+                const text = node.nodeValue || "";
+                const frag = document.createDocumentFragment();
+                let last = 0;
+                const re = /([+▲])\s*(\d+(?:\.\d+)?)%p/g;
+                let match;
+                while((match = re.exec(text))){
+                    if(match.index > last){
+                        frag.appendChild(document.createTextNode(text.slice(last, match.index)));
+                    }
+                    const span = document.createElement("span");
+                    span.className = match[1] === "+"
+                        ? "rate-change increase text-blue-600 font-semibold"
+                        : "rate-change decrease text-red-600 font-semibold";
+                    span.textContent = `${match[1]}${match[2]}%p`;
+                    frag.appendChild(span);
+                    last = re.lastIndex;
+                }
+                if(last < text.length){
+                    frag.appendChild(document.createTextNode(text.slice(last)));
+                }
+                node.replaceWith(frag);
+            });
+        };
+
+        if(answerBox){
+            // 원문의 줄바꿈은 살리되, 과도한 빈 줄만 한 칸으로 축소
+            const miniTemplate = document.createElement("template");
+            miniTemplate.innerHTML = cleanAnswerHtml;
+            applyRateColors(miniTemplate.content);
+            decoratePlainRateChanges(miniTemplate.content);
+
+            const brs = [...miniTemplate.content.querySelectorAll("br")];
+            brs.forEach((br, idx) => {
+                const next = br.nextSibling;
+                if(next && next.nodeName === "BR"){
+                    const spacer = document.createElement("span");
+                    spacer.className = "block h-1";
+                    br.replaceWith(spacer);
+                    next.remove();
+                }
+            });
+
+            answerBox.innerHTML = miniTemplate.innerHTML;
+        }
+
+        // 상세보기에서도 증감 색상이 항상 유지되도록 저장본에도 클래스 보강
+        const detailTemplate = document.createElement("template");
+        detailTemplate.innerHTML = cleanAnswerHtml;
+        applyRateColors(detailTemplate.content);
+        decoratePlainRateChanges(detailTemplate.content);
+        window.sbLastAIAnswer = detailTemplate.innerHTML;
+
+
+        console.log(
+            "AI SEARCH RESULT",
+            data
         );
-
 
 
     }
-
     catch(error){
 
 
@@ -2216,22 +2489,19 @@ async function handleAISearch(event){
         );
 
 
-        removeChatMessage(
-            loading
-        );
+        if(answerBox){
 
+            answerBox.innerHTML =
+                `
+                <span class="text-red-500">
+                AI 분석 요청 중 오류가 발생했습니다.
+                </span>
+                `;
 
-        appendChatMessage(
-
-            "AI 분석 요청 중 오류가 발생했습니다.",
-
-            "ai-message"
-
-        );
+        }
 
 
     }
-
 
 
 }
@@ -2379,8 +2649,9 @@ function setupProductSearch(){
 function setupEventListeners(){
 
 
-
-    // TOP10 변경
+    /* ======================================================
+       TOP10 카테고리 변경
+    ====================================================== */
 
     const category =
         document.getElementById(
@@ -2388,24 +2659,144 @@ function setupEventListeners(){
         );
 
 
-
     if(category){
-
 
         category.addEventListener(
             "change",
             fetchRatesData
         );
 
+    }
+
+
+
+    /* ======================================================
+       AI 질문
+       현재 V5 index.html : #ai-question
+    ====================================================== */
+
+    const aiInput =
+        document.getElementById(
+            "ai-question"
+        )
+        ||
+        document.getElementById(
+            "ai-query-input"
+        );
+
+
+    if(aiInput){
+
+
+        const inputRow =
+            aiInput.parentElement;
+
+
+        const searchButton =
+            inputRow
+            ?
+            inputRow.querySelector(
+                "button"
+            )
+            :
+            null;
+
+
+        if(searchButton){
+
+            searchButton.addEventListener(
+                "click",
+                handleAISearch
+            );
+
+        }
+
+
+        aiInput.addEventListener(
+            "keydown",
+            e => {
+
+                if(e.key === "Enter"){
+
+                    handleAISearch(e);
+
+                }
+
+            }
+        );
+
+
+        const questionPanel =
+            aiInput.closest(
+                ".bg-gray-50"
+            );
+
+
+        if(questionPanel){
+
+            const quickButtons =
+                questionPanel.querySelectorAll(
+                    "button"
+                );
+
+
+            quickButtons.forEach(
+                button => {
+
+                    if(button === searchButton){
+
+                        return;
+
+                    }
+
+
+                    button.addEventListener(
+                        "click",
+                        e => {
+
+                            e.preventDefault();
+
+                            const label =
+                                button.textContent.trim();
+
+
+                            const questionMap = {
+
+                                "시장현황":
+                                    "시장현황 알려줘",
+
+                                "우리금융":
+                                    "우리금융 경쟁력은",
+
+                                "경쟁사":
+                                    "경쟁사 현황 알려줘"
+
+                            };
+
+
+                            aiInput.value =
+                                questionMap[label]
+                                ||
+                                label;
+
+
+                            handleAISearch(e);
+
+                        }
+                    );
+
+                }
+            );
+
+        }
 
     }
 
 
 
-
-
-    // AI Search
-
+    /* ======================================================
+       기존 FORM 방식도 호환
+    ====================================================== */
 
     const aiForm =
         document.getElementById(
@@ -2413,26 +2804,22 @@ function setupEventListeners(){
         );
 
 
-
     if(aiForm){
-
 
         aiForm.addEventListener(
             "submit",
             handleAISearch
         );
 
-
     }
 
 
 
-
-    // 상품 검색
-
+    /* ======================================================
+       상품 검색
+    ====================================================== */
 
     setupProductSearch();
-
 
 
 }
@@ -2449,9 +2836,6 @@ window.addEventListener(
     "load",
 
     ()=>{
-
-
-        fetchFinancialData();
 
 
         fetchAllProducts();
@@ -2778,338 +3162,62 @@ if(btn){
 
 
 /* ==========================================================
-   AI DETAIL HOVER PREVIEW
+   AI DETAIL HOVER PREVIEW - 마지막 실제 질문/답변
 ========================================================== */
-
 
 document.addEventListener(
     "mouseover",
     function(e){
 
-
-        const btn =
-            e.target.closest(
-                "#ai-detail-btn"
-            );
-
-
-
+        const btn = e.target.closest("#ai-detail-btn");
         if(!btn){
-
             return;
-
         }
 
-
-
-
-
-        let preview =
-            document.getElementById(
-                "ai-detail-preview"
-            );
-
-
+        let preview = document.getElementById("ai-detail-preview");
 
         if(!preview){
-
-
-            preview =
-                document.createElement(
-                    "div"
-                );
-
-
-
-            preview.id =
-                "ai-detail-preview";
-
-
-
-            preview.className =
-                `
-                fixed
-                z-[9999]
-                w-80
-                bg-white
-                border
-                border-blue-100
-                rounded-xl
-                shadow-xl
-                p-4
-                text-xs
-                text-gray-700
-                `;
-
-
-
-            preview.innerHTML =
-`
-
-<div class="flex items-center justify-between mb-3">
-
-    <div class="font-bold text-blue-700">
-
-        📊 AI 상세 분석 미리보기
-
-    </div>
-
-
-    <span class="text-[10px] text-gray-400">
-
-        AI Insight
-
-    </span>
-
-</div>
-
-
-
-<div class="space-y-3 text-gray-700">
-
-
-
-    <div>
-
-        <div class="font-bold text-gray-800 mb-1">
-
-            📈 시장 흐름
-
-        </div>
-
-
-        <div class="text-[11px] leading-5">
-
-            저축은행 금리 경쟁이 지속되고 있으며
-
-            평균금리 수준과 최고금리 변화를
-
-            지속적으로 모니터링하고 있습니다.
-
-        </div>
-
-
-    </div>
-
-
-
-
-
-    <div class="border-t pt-2">
-
-
-        <div class="font-bold text-gray-800 mb-1">
-
-            🏦 우리금융 경쟁력
-
-        </div>
-
-
-        <div class="text-[11px] leading-5">
-
-            우리금융은 시장 평균 대비
-
-            경쟁력을 유지하고 있으며
-
-            주요 경쟁사 대비 금리 포지션을
-
-            지속 관리할 필요가 있습니다.
-
-        </div>
-
-
-    </div>
-
-
-
-
-
-    <div class="border-t pt-2">
-
-
-        <div class="font-bold text-gray-800 mb-1">
-
-            ⚠️ 주요 체크포인트
-
-        </div>
-
-
-        <div class="text-[11px] leading-5">
-
-            • 최고금리 상품 변동 여부 확인
-
-            <br>
-
-            • 경쟁사 금리 상승 여부 모니터링
-
-            <br>
-
-            • 신규 상품 출시 영향 분석
-
-        </div>
-
-
-    </div>
-
-
-
-</div>
-
-
-<div
-class="mt-3 pt-2 border-t text-[10px] text-blue-600 text-right"
->
-
-상세 분석에서 전체 내용을 확인하세요 →
-
-</div>
-
-
-`;
-
-
-
-            document.body.appendChild(
-                preview
-            );
-
-
+            preview = document.createElement("div");
+            preview.id = "ai-detail-preview";
+            preview.className = `
+                fixed z-[9999] w-96 bg-white border border-blue-100
+                rounded-xl shadow-xl p-4 text-xs text-gray-700
+            `;
+            document.body.appendChild(preview);
         }
 
+        const escapeHtml = value => String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
 
+        const question = window.sbLastAIQuestion ||
+            document.getElementById("ai-question")?.value?.trim() ||
+            "AI 질문";
 
+        const answerHtml = window.sbLastAIAnswer ||
+            "먼저 AI 질문을 실행하면 실제 답변 미리보기가 표시됩니다.";
 
+        preview.innerHTML = `
+            <div class="mb-3">
+                <div class="font-bold text-blue-700">📊 AI 답변 미리보기</div>
+            </div>
+            <div class="text-[10px] text-gray-400 mb-1">질문</div>
+            <div class="font-bold text-gray-800 mb-2">${escapeHtml(question)}</div>
+            <div class="text-[10px] text-gray-400 mb-1">답변</div>
+            <div class="text-[11px] leading-5 max-h-56 overflow-y-auto pr-1">${answerHtml}</div>
+            <div class="mt-3 pt-2 border-t text-[10px] text-blue-600 text-right">클릭하면 전체 답변을 확인합니다 →</div>
+        `;
 
-        /*
-            AI 표시 내용 연결
-        */
-
-
-        const content =
-            document.getElementById(
-                "ai-preview-content"
-            );
-
-
-
-        if(content){
-
-
-
-            const summary =
-                document.querySelector(
-                    "#executive-summary-mini"
-                );
-
-
-
-            const answer =
-                document.querySelector(
-                    "#ai-mini-answer"
-                );
-
-
-
-            let text =
-                "";
-
-
-
-            if(
-                summary
-                &&
-                summary.innerText.trim()
-            ){
-
-
-                text =
-                    summary.innerText;
-
-
-            }
-            else if(
-                answer
-                &&
-                answer.innerText.trim()
-            ){
-
-
-                text =
-                    answer.innerText;
-
-
-            }
-            else{
-
-
-                text =
-                    `
-                    시장 데이터를 기반으로
-                    AI 분석을 준비 중입니다.
-                    `;
-
-
-            }
-
-
-
-            content.innerHTML =
-                text.replace(
-                    /\n/g,
-                    "<br>"
-                );
-
-
-        }
-
-
-
-
-
-
-
-        /*
-            위치 계산
-        */
-
-
-        const rect =
-            btn.getBoundingClientRect();
-
-
-
-        preview.style.left =
-            rect.left
-            +
-            "px";
-
-
-
-        preview.style.top =
-            (
-                rect.bottom
-                +
-                8
-            )
-            +
-            "px";
-
-
-
-        preview.style.display =
-            "block";
-
-
-
+        const rect = btn.getBoundingClientRect();
+        const maxLeft = window.innerWidth - 400;
+        preview.style.left = Math.max(12, Math.min(rect.left, maxLeft)) + "px";
+        preview.style.top = (rect.bottom + 8) + "px";
+        preview.style.display = "block";
     }
 );
-
-
-
-
-
-
-
 
 
 /* ==========================================================
@@ -3181,3 +3289,33 @@ document.addEventListener(
 
     }
 );
+
+/* ==========================================================
+   시장분석 상세보기 : AI 질문 상세보기와 완전 분리
+========================================================== */
+document.addEventListener("click", function(event){
+    if(event.target.closest("#market-detail-btn")){
+        event.preventDefault();
+        const modal = document.getElementById("market-detail-modal");
+        if(modal){
+            modal.classList.remove("hidden");
+            modal.classList.add("flex");
+        }
+        return;
+    }
+
+    if(event.target.closest("#market-detail-close")){
+        const modal = document.getElementById("market-detail-modal");
+        if(modal){
+            modal.classList.add("hidden");
+            modal.classList.remove("flex");
+        }
+        return;
+    }
+
+    const modal = document.getElementById("market-detail-modal");
+    if(modal && event.target === modal){
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+    }
+});
