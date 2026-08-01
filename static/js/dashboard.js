@@ -5,25 +5,89 @@
  * KPI + Woori Market Position
  */
 
-document.addEventListener("DOMContentLoaded", () => {
-    initDashboard();
-});
 
+
+/* ==========================================================
+   GLOBAL DASHBOARD DATA
+========================================================== */
+
+let dashboardKPIData = {};
+
+let wooriMarketData = {};
+
+
+
+console.log(
+    "🔥 DASHBOARD JS LOADED"
+);
+
+
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+
+        console.log(
+            "🔥 DOM CONTENT LOADED"
+        );
+
+
+        initDashboard();
+
+
+    }
+);
+
+
+
+/* ==========================================================
+   DASHBOARD INITIALIZE
+========================================================== */
 
 
 function initDashboard() {
 
 
-    console.log("SBRateBot V5 Dashboard Start");
+    console.log(
+        "🔥 SBRateBot V5 Dashboard START"
+    );
 
+
+
+    /*
+        KPI DATA
+    */
 
     fetchKPI();
 
 
+
+
+    /*
+        WOORI MARKET POSITION
+    */
+
+    fetchWooriData();
+
+
+
+
+    /*
+        HERO SECTION
+    */
+
     loadHero();
 
 
+
+
+    /*
+        AI SUMMARY
+    */
+
     fetchAISummary();
+
 
 
 }
@@ -176,62 +240,719 @@ async function fetchAISummary(){
     */
 
 
-    const aiOpinion =
+        const aiOpinion =
 
-    summary
-    .slice(
-        6
-    )
-    .join(" ")
-    .replace(
-        /은행별 금리 경쟁 차이가 큰 시장으로|평균금리는 3% 이상으로/g,
-        ""
-    )
-    .trim();
+        summary
+            .slice(6)
+            .join("<br>")
+            .replace(
+                /은행별 금리 경쟁 차이가 큰 시장으로|평균금리는 3% 이상으로/g,
+                ""
+            )
+            .trim();
 
 
 
-    /*
+/* ==========================================================
+   AI DETAIL MODAL CONTENT (COMPACT EXECUTIVE STYLE)
+========================================================== */
+
+
+const detailContent = `
+
+
+<div class="space-y-2">
+
+
+
+<!-- 시장 흐름 분석 -->
+
+<div
+class="
+bg-blue-50
+border
+border-blue-100
+rounded-lg
+px-3
+py-2
+"
+>
+
+
+<div
+class="
+font-bold
+text-blue-700
+text-xs
+mb-1
+"
+>
+📈 시장 흐름 분석
+</div>
+
+
+<div
+class="
+text-gray-600
+leading-5
+"
+>
+
+${
+
+    aiOpinion
+
+    ||
+
+    "시장 분석 데이터가 없습니다."
+
+}
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+        <!-- 시장 현황 -->
+
+        <div
+        class="border border-gray-100 rounded-xl p-3"
+        >
+
+
+            <div
+            class="font-bold text-gray-800 mb-3 text-sm"
+            >
+
+                📊 시장 현황
+
+            </div>
+
+
+
+            <div
+            class="grid grid-cols-5 gap-2 text-center"
+            >
+
+
+
+                <div
+                class="bg-gray-50 rounded-lg p-2"
+                >
+
+                    <div
+                    class="text-[10px] text-gray-400"
+                    >
+                        상품수
+                    </div>
+
+                    <div
+                    class="text-sm font-bold text-gray-800"
+                    >
+                        299개
+                    </div>
+
+                </div>
+
+
+
+
+
+                <div
+                class="bg-gray-50 rounded-lg p-2"
+                >
+
+                    <div
+                    class="text-[10px] text-gray-400"
+                    >
+                        평균금리
+                    </div>
+
+                    <div
+                    class="text-sm font-bold text-blue-700"
+                    >
+                        3.83%
+                    </div>
+
+                </div>
+
+
+
+
+
+                <div
+                class="bg-gray-50 rounded-lg p-2"
+                >
+
+                    <div
+                    class="text-[10px] text-gray-400"
+                    >
+                        최고금리
+                    </div>
+
+                    <div
+                    class="text-sm font-bold text-blue-700"
+                    >
+                        4.20%
+                    </div>
+
+                    <div
+                    class="text-[9px] text-gray-400"
+                    >
+                        조은
+                    </div>
+
+                </div>
+
+
+
+
+
+                <div
+                class="bg-gray-50 rounded-lg p-2"
+                >
+
+                    <div
+                    class="text-[10px] text-gray-400"
+                    >
+                        최저금리
+                    </div>
+
+                    <div
+                    class="text-sm font-bold text-gray-700"
+                    >
+                        2.00%
+                    </div>
+
+                    <div
+                    class="text-[9px] text-gray-400"
+                    >
+                        조은
+                    </div>
+
+                </div>
+
+
+
+
+
+                <div
+                class="bg-gray-50 rounded-lg p-2"
+                >
+
+                    <div
+                    class="text-[10px] text-gray-400"
+                    >
+                        금리 스프레드
+                    </div>
+
+                    <div
+                    class="text-sm font-bold text-orange-600"
+                    >
+                        2.20%p
+                    </div>
+
+                </div>
+
+
+
+            </div>
+
+
+        </div>
+
+
+
+
+<!-- 우리금융 경쟁력 -->
+
+<div
+class="
+bg-blue-50
+border
+border-blue-100
+rounded-lg
+px-3
+py-2
+"
+>
+
+
+<div
+class="
+font-bold
+text-blue-700
+text-xs
+mb-2
+"
+>
+🏦 우리금융 경쟁력 분석
+</div>
+
+
+
+<div
+class="
+grid
+grid-cols-3
+gap-2
+text-center
+"
+>
+
+
+<!-- 시장순위 -->
+
+<div
+class="
+bg-white
+rounded-lg
+py-2
+"
+>
+
+<div
+class="text-[10px] text-gray-400"
+>
+시장순위
+</div>
+
+
+<div
+class="
+font-bold
+text-blue-700
+text-sm
+"
+>
+${
+wooriPositionData.market_rank
+?
+wooriPositionData.market_rank + "위"
+:
+"-"
+}
+</div>
+
+
+</div>
+
+
+
+
+
+
+<!-- 현재금리 -->
+
+<div
+class="
+bg-white
+rounded-lg
+py-2
+"
+>
+
+<div
+class="text-[10px] text-gray-400"
+>
+현재금리
+</div>
+
+
+<div
+class="
+font-bold
+text-gray-800
+text-sm
+"
+>
+${
+wooriPositionData.best_rate
+?
+Number(
+    wooriPositionData.best_rate
+)
+.toFixed(2)
++
+"%"
+:
+"-"
+}
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+<!-- 평균금리 대비 -->
+
+<div
+class="
+bg-white
+rounded-lg
+py-2
+"
+>
+
+<div
+class="text-[10px] text-gray-400"
+>
+평균금리 대비
+</div>
+
+
+<div
+class="
+font-bold
+text-sm
+"
+>
+
+
+${
+
+Number(
+    wooriPositionData.avg_gap || 0
+)
+>= 0
+
+?
+
+`
+<span class="text-blue-600">
++${Number(
+    wooriPositionData.avg_gap
+)
+.toFixed(2)}%p
+</span>
+`
+
+:
+
+`
+
+<span class="text-red-600">
+▲${Math.abs(
+Number(
+    wooriPositionData.avg_gap
+)
+)
+.toFixed(2)}%p
+</span>
+
+`
+
+}
+
+
+</div>
+
+
+</div>
+
+
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+
+<!-- 체크포인트 -->
+
+<div
+class="
+bg-yellow-50
+border
+border-yellow-100
+rounded-lg
+px-3
+py-2
+"
+>
+
+
+<div
+class="
+font-bold
+text-yellow-700
+text-xs
+mb-1
+"
+>
+⚠️ 주요 체크포인트
+</div>
+
+
+<div
+class="
+text-gray-600
+leading-5
+"
+>
+
+• 경쟁사 최고금리 변화 모니터링
+
+<br>
+
+• 금리 상승 기관 발생 여부 확인
+
+<br>
+
+• 시장 평균 대비 경쟁력 점검
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+
+<!-- AI 대응 전략 -->
+
+<div
+class="
+bg-gray-50
+border
+border-gray-100
+rounded-lg
+px-3
+py-2
+"
+>
+
+
+<div
+class="
+font-bold
+text-gray-800
+text-xs
+mb-1
+"
+>
+🎯 AI 대응 전략
+</div>
+
+
+<div
+class="
+text-gray-600
+leading-5
+"
+>
+
+• 금리 경쟁력 유지 및 시장 변화 대응
+
+<br>
+
+• 경쟁사 금리 조정 시 즉시 검토
+
+<br>
+
+• 신규 상품 출시 가능성 점검
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+
+
+<!-- AI 종합 판단 -->
+
+<div
+class="
+bg-amber-50
+border
+border-amber-100
+rounded-lg
+px-3
+py-2
+"
+>
+
+
+<div
+class="
+font-bold
+text-amber-800
+text-xs
+mb-1
+"
+>
+🤖 AI 종합 판단
+</div>
+
+
+<div
+class="
+text-gray-700
+leading-5
+"
+>
+
+우리금융은 시장 내 안정적인 경쟁력을 유지하고 있습니다.
+
+<br>
+
+경쟁사 금리 조정 및 신규 상품 출시 여부를 지속적으로 모니터링할 필요가 있습니다.
+
+</div>
+
+
+</div>
+
+
+
+</div>
+
+
+`;
+
+
+
+    /* ==========================================================
+       모달 내용 갱신
+    ========================================================== */
+
+    const modal =
+
+        document.getElementById(
+            "ai-detail-content"
+        );
+
+
+    if (modal) {
+
+        modal.innerHTML = detailContent;
+
+    }
+
+
+
+        /*
         시장 데이터
     */
 
 
     const marketData = `
 
-        <div class="mt-3 font-bold text-gray-800">
 
-            📊 시장 현황
+        <div class="text-xs text-gray-700 leading-5">
+
+
+            <div class="mb-1 text-xs font-bold text-gray-800">
+
+                📊 시장 현황
+
+            </div>
+
+
+
+
+            <div class="flex">
+
+
+                <div class="flex-1">
+
+                    ${summary[1] || ""}
+
+                </div>
+
+
+
+                <div class="flex-1">
+
+                    ${summary[2] || ""}
+
+                </div>
+
+
+
+                <div class="flex-1">
+
+                    ${summary[5] || ""}
+
+                </div>
+
+
+            </div>
+
+
+
+
+
+            <div class="flex items-center mt-1">
+
+
+                <div class="flex-1">
+
+                    ${summary[3] || ""}
+
+                </div>
+
+
+
+                <div class="flex-1">
+
+                    ${summary[4] || ""}
+
+                </div>
+
+
+
+                <div class="flex-1 text-right">
+
+
+                    <button
+
+                        id="ai-detail-btn"
+
+                        class="text-xs text-blue-600 font-semibold hover:underline"
+
+                    >
+
+                        📊 AI 상세분석 보기 >
+
+                    </button>
+
+
+                </div>
+
+
+            </div>
+
+
 
         </div>
 
-
-        <div class="mt-2">
-
-            ${summary[1] || ""}
-
-            |
-
-            ${summary[2] || ""}
-
-        </div>
-
-
-        <div>
-
-            ${summary[3] || ""}
-
-            |
-
-            ${summary[4] || ""}
-
-        </div>
-
-
-        <div>
-
-            ${summary[5] || ""}
-
-        </div>
 
     `;
 
@@ -245,42 +966,48 @@ async function fetchAISummary(){
     target.innerHTML = `
 
 
-        <div class="mb-3">
+        <div class="mb-2">
 
 
-            <div class="font-bold text-gray-800 mb-1">
+            <div class="text-xs font-bold text-gray-800 mb-1">
 
                 💡 AI 의견
 
             </div>
 
 
-            <div class="text-sm text-gray-700 leading-5">
+
+            <div class="text-xs text-gray-700 leading-5">
 
 
-    ${
+                ${
 
-        aiOpinion
+                    aiOpinion
 
-        ||
+                    ||
 
-        "시장 금리 흐름을 분석 중입니다."
+                    "시장 금리 흐름을 분석 중입니다."
 
-    }
+                }
 
 
-</div>
+            </div>
 
 
         </div>
 
 
 
-        <div class="border-t pt-3">
+
+
+        <div class="border-t pt-2">
+
 
             ${marketData}
 
+
         </div>
+
 
 
     `;
@@ -291,9 +1018,10 @@ async function fetchAISummary(){
 
 
 
-
-
 function renderKPI(data){
+
+    dashboardKPIData = data;
+
 
 
     /* ======================================================
@@ -600,98 +1328,171 @@ function updateTime(time){
    /api/woori
 ========================================================== */
 
-async function fetchWooriData() {
 
-    const data = await apiFetch("/api/woori");
+let wooriPositionData = {};
 
-    if (!data) {
+
+
+async function fetchWooriData(){
+
+
+    const data =
+        await apiFetch(
+            "/api/woori"
+        );
+
+
+    if(!data){
+
+        console.log(
+            "WOORI DATA EMPTY"
+        );
+
         return;
+
     }
 
-    renderWooriPosition(data);
+
+
+    console.log(
+        "🔥 WOORI API",
+        data
+    );
+
+
+
+    wooriPositionData = data;
+
+
+
+    renderWooriPosition(
+        data
+    );
+
 
 }
 
-function renderWooriPosition(data) {
+
+
+
+
+function renderWooriPosition(data){
+
+    console.log(
+        "🔥 RENDER WOORI",
+        data
+    );
+
 
     const rank =
-        document.getElementById("woori-rank");
+        document.getElementById(
+            "woori-rank"
+        );
+
 
     const rate =
-        document.getElementById("woori-rate");
+        document.getElementById(
+            "woori-rate"
+        );
 
-    const product =
-        document.getElementById("woori-product");
 
     const avgGap =
-        document.getElementById("woori-gap-average");
+        document.getElementById(
+            "woori-gap-average"
+        );
 
-    const bestGap =
-        document.getElementById("woori-gap-best");
 
-    const worstGap =
-        document.getElementById("woori-gap-low");
 
-    if (rank) {
+    /*
+        시장순위
+    */
 
-        rank.textContent =
+    if(rank){
+
+        rank.innerHTML =
             data.market_rank
-                ? `${data.market_rank}위`
-                : "-";
+            ?
+            `${data.market_rank}위`
+            :
+            "-";
 
     }
 
-    if (rate) {
 
-        rate.textContent =
-            data.best_rate
-                ? `${Number(data.best_rate).toFixed(2)}%`
-                : "-";
+
+    /*
+        현재금리
+    */
+
+    if(rate){
+
+        rate.innerHTML =
+            data.rate !== undefined
+            ?
+            `${Number(data.rate).toFixed(2)}%`
+            :
+            "-";
 
     }
 
-    if (product) {
 
-        product.textContent =
-            data.product_name || "-";
 
-    }
+    /*
+        시장평균 대비
+    */
 
-    if (avgGap) {
+    if(avgGap){
+
 
         const value =
-            Number(data.avg_gap || 0);
+            Number(
+                data.average_gap ?? 0
+            );
 
-        avgGap.innerHTML =
-            value >= 0
-                ? `<span class="text-blue-600 font-bold">+${value.toFixed(2)}%p</span>`
-                : `<span class="text-red-600 font-bold">${value.toFixed(2)}%p</span>`;
+
+        if(
+            value > 0
+        ){
+
+            avgGap.innerHTML =
+            `
+            <span class="text-blue-600 font-bold">
+            +${value.toFixed(2)}%p
+            </span>
+            `;
+
+
+        }
+        else if(
+            value < 0
+        ){
+
+            avgGap.innerHTML =
+            `
+            <span class="text-red-600 font-bold">
+            ▲${Math.abs(value).toFixed(2)}%p
+            </span>
+            `;
+
+
+        }
+        else{
+
+
+            avgGap.innerHTML =
+            `
+            <span class="text-gray-500">
+            -
+            </span>
+            `;
+
+
+        }
+
 
     }
 
-    if (bestGap) {
 
-        const value =
-            Number(data.best_gap || 0);
-
-        bestGap.innerHTML =
-            value >= 0
-                ? `<span class="text-blue-600 font-bold">+${value.toFixed(2)}%p</span>`
-                : `<span class="text-red-600 font-bold">${value.toFixed(2)}%p</span>`;
-
-    }
-
-    if (worstGap) {
-
-        const value =
-            Number(data.low_gap || 0);
-
-        worstGap.innerHTML =
-            value >= 0
-                ? `<span class="text-blue-600 font-bold">+${value.toFixed(2)}%p</span>`
-                : `<span class="text-red-600 font-bold">${value.toFixed(2)}%p</span>`;
-
-    }
 
 }
 
@@ -1780,3 +2581,603 @@ async function loadHero(){
     }
 
 }
+
+
+/* ==========================================================
+   AI DETAIL MODAL + HOVER PREVIEW
+========================================================== */
+
+
+document.addEventListener(
+    "click",
+    function(e){
+
+
+       /*
+    상세 분석 버튼 클릭
+*/
+
+
+const btn =
+    e.target.closest(
+        "#ai-detail-btn"
+    );
+
+
+if(btn){
+
+
+    console.log(
+        "AI DETAIL BUTTON CLICK"
+    );
+
+
+
+    /*
+        클릭 순간 우리금융 데이터 재조회
+    */
+
+
+    fetch(
+        "/api/woori"
+    )
+
+
+    .then(
+        response =>
+            response.json()
+    )
+
+
+    .then(
+        data => {
+
+
+            console.log(
+                "DETAIL WOORI DATA",
+                data
+            );
+
+
+
+            /*
+                상세분석 전용 데이터 저장
+            */
+
+
+            wooriPositionData =
+                data;
+
+
+
+            /*
+                상세내용 다시 생성
+            */
+
+
+            if(
+                typeof renderAIDetailModal === "function"
+            ){
+
+
+                renderAIDetailModal();
+
+
+            }
+
+
+
+
+
+            /*
+                모달 열기
+            */
+
+
+            const modal =
+                document.getElementById(
+                    "ai-detail-modal"
+                );
+
+
+
+            if(modal){
+
+
+                modal.classList.remove(
+                    "hidden"
+                );
+
+
+                modal.classList.add(
+                    "flex"
+                );
+
+
+            }
+
+
+        }
+
+    )
+
+
+    .catch(
+        error => {
+
+
+            console.error(
+                "WOORI DETAIL ERROR",
+                error
+            );
+
+
+        }
+    );
+
+
+}
+
+
+
+
+        /*
+            모달 닫기
+        */
+
+
+        const close =
+            e.target.closest(
+                "#ai-detail-close"
+            );
+
+
+
+        if(close){
+
+
+            const modal =
+                document.getElementById(
+                    "ai-detail-modal"
+                );
+
+
+
+            if(modal){
+
+
+                modal.classList.add(
+                    "hidden"
+                );
+
+
+                modal.classList.remove(
+                    "flex"
+                );
+
+
+                console.log(
+                    "AI DETAIL MODAL CLOSE"
+                );
+
+
+            }
+
+
+        }
+
+
+    }
+);
+
+
+
+
+
+
+
+
+/* ==========================================================
+   AI DETAIL HOVER PREVIEW
+========================================================== */
+
+
+document.addEventListener(
+    "mouseover",
+    function(e){
+
+
+        const btn =
+            e.target.closest(
+                "#ai-detail-btn"
+            );
+
+
+
+        if(!btn){
+
+            return;
+
+        }
+
+
+
+
+
+        let preview =
+            document.getElementById(
+                "ai-detail-preview"
+            );
+
+
+
+        if(!preview){
+
+
+            preview =
+                document.createElement(
+                    "div"
+                );
+
+
+
+            preview.id =
+                "ai-detail-preview";
+
+
+
+            preview.className =
+                `
+                fixed
+                z-[9999]
+                w-80
+                bg-white
+                border
+                border-blue-100
+                rounded-xl
+                shadow-xl
+                p-4
+                text-xs
+                text-gray-700
+                `;
+
+
+
+            preview.innerHTML =
+`
+
+<div class="flex items-center justify-between mb-3">
+
+    <div class="font-bold text-blue-700">
+
+        📊 AI 상세 분석 미리보기
+
+    </div>
+
+
+    <span class="text-[10px] text-gray-400">
+
+        AI Insight
+
+    </span>
+
+</div>
+
+
+
+<div class="space-y-3 text-gray-700">
+
+
+
+    <div>
+
+        <div class="font-bold text-gray-800 mb-1">
+
+            📈 시장 흐름
+
+        </div>
+
+
+        <div class="text-[11px] leading-5">
+
+            저축은행 금리 경쟁이 지속되고 있으며
+
+            평균금리 수준과 최고금리 변화를
+
+            지속적으로 모니터링하고 있습니다.
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <div class="border-t pt-2">
+
+
+        <div class="font-bold text-gray-800 mb-1">
+
+            🏦 우리금융 경쟁력
+
+        </div>
+
+
+        <div class="text-[11px] leading-5">
+
+            우리금융은 시장 평균 대비
+
+            경쟁력을 유지하고 있으며
+
+            주요 경쟁사 대비 금리 포지션을
+
+            지속 관리할 필요가 있습니다.
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <div class="border-t pt-2">
+
+
+        <div class="font-bold text-gray-800 mb-1">
+
+            ⚠️ 주요 체크포인트
+
+        </div>
+
+
+        <div class="text-[11px] leading-5">
+
+            • 최고금리 상품 변동 여부 확인
+
+            <br>
+
+            • 경쟁사 금리 상승 여부 모니터링
+
+            <br>
+
+            • 신규 상품 출시 영향 분석
+
+        </div>
+
+
+    </div>
+
+
+
+</div>
+
+
+<div
+class="mt-3 pt-2 border-t text-[10px] text-blue-600 text-right"
+>
+
+상세 분석에서 전체 내용을 확인하세요 →
+
+</div>
+
+
+`;
+
+
+
+            document.body.appendChild(
+                preview
+            );
+
+
+        }
+
+
+
+
+
+        /*
+            AI 표시 내용 연결
+        */
+
+
+        const content =
+            document.getElementById(
+                "ai-preview-content"
+            );
+
+
+
+        if(content){
+
+
+
+            const summary =
+                document.querySelector(
+                    "#executive-summary-mini"
+                );
+
+
+
+            const answer =
+                document.querySelector(
+                    "#ai-mini-answer"
+                );
+
+
+
+            let text =
+                "";
+
+
+
+            if(
+                summary
+                &&
+                summary.innerText.trim()
+            ){
+
+
+                text =
+                    summary.innerText;
+
+
+            }
+            else if(
+                answer
+                &&
+                answer.innerText.trim()
+            ){
+
+
+                text =
+                    answer.innerText;
+
+
+            }
+            else{
+
+
+                text =
+                    `
+                    시장 데이터를 기반으로
+                    AI 분석을 준비 중입니다.
+                    `;
+
+
+            }
+
+
+
+            content.innerHTML =
+                text.replace(
+                    /\n/g,
+                    "<br>"
+                );
+
+
+        }
+
+
+
+
+
+
+
+        /*
+            위치 계산
+        */
+
+
+        const rect =
+            btn.getBoundingClientRect();
+
+
+
+        preview.style.left =
+            rect.left
+            +
+            "px";
+
+
+
+        preview.style.top =
+            (
+                rect.bottom
+                +
+                8
+            )
+            +
+            "px";
+
+
+
+        preview.style.display =
+            "block";
+
+
+
+    }
+);
+
+
+
+
+
+
+
+
+
+/* ==========================================================
+   AI DETAIL HOVER OUT
+========================================================== */
+
+
+document.addEventListener(
+    "mouseout",
+    function(e){
+
+
+        const btn =
+            e.target.closest(
+                "#ai-detail-btn"
+            );
+
+
+
+        if(!btn){
+
+            return;
+
+        }
+
+
+
+        const preview =
+            document.getElementById(
+                "ai-detail-preview"
+            );
+
+
+
+        if(preview){
+
+
+            preview.style.display =
+                "none";
+
+
+        }
+
+
+    }
+);
+
+/* ==========================================================
+   AI DETAIL CLICK TEST
+========================================================== */
+
+document.addEventListener(
+    "click",
+    function(e){
+
+        const btn =
+            e.target.closest(
+                "#ai-detail-btn"
+            );
+
+
+        if(btn){
+
+            console.log(
+                "🔥 AI DETAIL CLICK TEST OK"
+            );
+
+        }
+
+    }
+);

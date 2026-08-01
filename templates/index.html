@@ -43,7 +43,7 @@
   </header>
 
   <!-- 메인 레이아웃 (대시보드 + 우측 AI 분석센터) -->
-  <div class="p-6 max-w-[1700px] mx-auto grid grid-cols-12 gap-6">
+  <div class="p-6 max-w-[1700px] mx-auto grid grid-cols-12 gap-6 items-start">
 
     <!-- 좌측 메인 영역 (9컬럼) -->
     <main class="col-span-9 space-y-5">
@@ -93,7 +93,7 @@
 
 <!-- HERO HEADER -->
 
-<div class="flex items-center justify-between mb-3">
+<div class="flex items-center justify-between mb-4">
 
 
 <div class="flex items-center gap-2">
@@ -141,7 +141,7 @@ class="h-5 object-contain"
 ====================================================== -->
 
 
-<div class="bg-blue-50 rounded-xl p-3">
+<div class="bg-blue-50 rounded-xl p-4">
 
 
 
@@ -487,26 +487,11 @@ AI 시장분석 현황
 
 <div
 id="executive-summary-mini"
-class="text-xs text-gray-600 leading-5 flex-1">
+class="text-xs text-gray-600 leading-5">
 
-
-시장 데이터를 분석하는 중입니다.
-
+    시장 데이터를 분석하는 중입니다.
 
 </div>
-
-
-
-
-
-<button
-class="mt-3 text-xs text-blue-600 font-medium text-right">
-
-
-상세 분석 보기 >
-
-</button>
-
 
 
 </div>
@@ -758,15 +743,11 @@ class="mt-3 text-xs text-blue-600 font-medium text-right">
 
 
         <button
-
-          class="mt-2 text-[11px] text-blue-600 font-medium"
-
-        >
-
-          📊 상세 분석보기 >
-
-        </button>
-
+    id="ai-detail-btn"
+    class="mt-2 text-[11px] text-blue-600 font-medium hover:underline"
+>
+    📊 상세 분석보기 >
+</button>
 
       </div>
 
@@ -910,55 +891,71 @@ class="mt-3 text-xs text-blue-600 font-medium text-right">
     </main>
 
     <!-- 우측 AI 분석센터 패널 (3컬럼) -->
-    <aside class="col-span-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-5 h-fit">
+    <aside class="col-span-3 min-w-0 w-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-5 h-fit self-start">
+
       <!-- 패널 헤더 -->
       <div class="flex justify-between items-center border-b pb-3">
         <h2 class="font-bold text-sm text-gray-900 flex items-center gap-1">💬 AI 분석센터</h2>
-        <button class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
+        <button type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
       </div>
 
       <!-- 서브 탭 -->
-      <div class="flex justify-between text-xs border-b pb-2 text-gray-400 font-medium">
-        <span class="text-blue-600 font-bold border-b-2 border-blue-600 pb-2">시장</span>
-        <span>금융지주</span>
-        <span>우리금융</span>
-        <span>경쟁사</span>
-        <span>변동분석</span>
-        <span>보고서</span>
+      <div class="grid grid-cols-6 gap-1 text-[10px] border-b pb-2 text-gray-400 font-medium">
+        <span class="text-blue-600 font-bold border-b-2 border-blue-600 pb-2 text-center">시장</span>
+        <span class="text-center">금융지주</span>
+        <span class="text-center">우리금융</span>
+        <span class="text-center">경쟁사</span>
+        <span class="text-center">변동분석</span>
+        <span class="text-center">보고서</span>
       </div>
 
-      <!-- 우리금융 지주 현황 카드 -->
-      <div class="bg-blue-50/40 p-3 rounded-xl border border-blue-100 text-xs space-y-2">
-        <div class="flex justify-between items-center">
+      <!-- 우리금융 현황 -->
+      <div class="bg-blue-50/40 p-3 rounded-xl border border-blue-100 text-xs space-y-3">
+        <div class="flex justify-between items-center gap-2">
           <span class="font-bold text-blue-700">⭐ 우리금융</span>
-          <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">2위 유지</span>
+          <span id="woori-rank-badge" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">시장 포지션</span>
         </div>
-        <div class="grid grid-cols-3 text-center pt-1">
-          <div><div class="text-[10px] text-gray-400">현재금리</div><div class="font-bold text-gray-800">4.10%</div></div>
-          <div><div class="text-[10px] text-gray-400">시장순위</div><div class="font-bold text-gray-800">7위 <span class="text-[9px] text-gray-400">-(0)</span></div></div>
-          <div><div class="text-[10px] text-gray-400">시장평균대비</div><div class="font-bold text-blue-600">+0.17%p</div></div>
+
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
+            <div class="text-[10px] text-gray-400">현재금리</div>
+            <div id="woori-rate" class="font-bold text-gray-800 text-sm">-</div>
+          </div>
+
+          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
+            <div class="text-[10px] text-gray-400">시장순위</div>
+            <div id="woori-rank" class="font-bold text-blue-700 text-sm">-</div>
+          </div>
+
+          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
+            <div class="text-[10px] text-gray-400">시장평균대비</div>
+            <div id="woori-gap-average" class="font-bold text-sm">-</div>
+          </div>
         </div>
       </div>
 
       <!-- 금융지주 순위 목록 -->
       <div class="space-y-2 text-xs">
-        <div class="font-bold text-gray-700 flex items-center gap-1">🏆 금융지주 순위 <span class="text-[10px] font-normal text-gray-400">(평균금리 기준)</span></div>
+        <div class="font-bold text-gray-700 flex items-center gap-1">
+          🏆 금융지주 순위
+          <span class="text-[10px] font-normal text-gray-400">(평균금리 기준)</span>
+        </div>
         <div class="space-y-1.5">
-          <div class="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
             <span>1. 하나금융지주</span>
-            <span class="font-bold">4.20% <span class="text-blue-600 text-[10px]">▲ 0.10%p</span></span>
+            <span class="font-bold whitespace-nowrap">4.20%</span>
           </div>
-          <div class="flex justify-between items-center p-2 rounded-lg bg-blue-50 border border-blue-200">
+          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200">
             <span class="font-bold text-blue-700">2. 우리금융지주</span>
-            <span class="font-bold text-blue-700">4.10% <span class="text-gray-400 text-[10px]">-(0.00%p)</span></span>
+            <span class="font-bold text-blue-700 whitespace-nowrap">4.10%</span>
           </div>
-          <div class="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
             <span>3. KB금융지주</span>
-            <span class="font-bold">4.00% <span class="text-red-500 text-[10px]">▼ 0.05%p</span></span>
+            <span class="font-bold whitespace-nowrap">4.00%</span>
           </div>
-          <div class="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
             <span>4. 신한금융지주</span>
-            <span class="font-bold">3.90% <span class="text-gray-400 text-[10px]">-(0.00%p)</span></span>
+            <span class="font-bold whitespace-nowrap">3.90%</span>
           </div>
         </div>
       </div>
@@ -967,35 +964,186 @@ class="mt-3 text-xs text-blue-600 font-medium text-right">
       <div class="bg-amber-50/50 p-3 rounded-xl border border-amber-100 text-xs space-y-1.5">
         <div class="font-bold text-amber-800 flex items-center gap-1">💡 AI 종합 의견</div>
         <p class="text-[11px] text-gray-600 leading-relaxed">
-          시장 전체는 안정세가 지속되고 있으며, 금리 변동이 <span class="font-bold">0.10%p</span>로 축소되었습니다.<br/>
-          우리금융은 2위를 유지하며 경쟁력을 유지하고 있습니다.
+          시장 전체 흐름과 우리금융의 금리 경쟁력을 실시간 데이터 기준으로 모니터링합니다.
         </p>
-        <div class="text-right pt-1"><a href="#" class="text-[11px] text-blue-600 font-medium">📊 금융지주 상세 분석보기 ></a></div>
+        <div class="text-right pt-1">
+          <button type="button" id="ai-side-detail-btn" class="text-[11px] text-blue-600 font-medium hover:underline">📊 상세 분석보기 &gt;</button>
+        </div>
       </div>
 
-      <!-- 오늘의 브리핑 및 하단 입력 -->
+      <!-- 오늘의 브리핑 -->
       <div class="space-y-2 border-t pt-3 text-xs">
         <div class="font-bold text-gray-700 flex items-center gap-1">📅 오늘의 브리핑</div>
         <ul class="text-[11px] text-gray-600 space-y-1 list-disc pl-4">
-          <li>시장은 안정세이며 변동폭은 0.10%p로 축소</li>
-          <li>신규 상품 2건이 추가되었습니다.</li>
-          <li>우리금융은 2위 유지, 하나금융과의 격차 0.10%p</li>
+          <li>시장 평균 및 최고금리 변화 모니터링</li>
+          <li>금리 변동 상품과 신규 상품 확인</li>
+          <li>우리금융 시장순위와 평균 대비 경쟁력 점검</li>
         </ul>
       </div>
 
+      <!-- 추가 질문 -->
       <div class="space-y-2 pt-2">
-        <button class="w-full bg-[#1a58c8] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">
-          AI에게 추가 질문하기
-        </button>
-        <div class="flex gap-1">
-          <input type="text" placeholder="추가 질문을 입력하세요..." class="flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
-          <button class="bg-[#1a58c8] text-white px-3 py-1.5 rounded-lg text-xs">➤</button>
+        <button type="button" class="w-full bg-[#1a58c8] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">AI에게 추가 질문하기</button>
+        <div class="flex gap-1 min-w-0">
+          <input type="text" placeholder="추가 질문을 입력하세요..." class="min-w-0 flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
+          <button type="button" class="bg-[#1a58c8] text-white px-3 py-1.5 rounded-lg text-xs">➤</button>
         </div>
       </div>
 
     </aside>
 
   </div>
+
+  <!-- ======================================================
+       AI 상세 분석 MODAL
+       단일 ID 구조 + 클릭 시 최신 API 데이터 재조회
+  ====================================================== -->
+  <div id="ai-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
+    <div class="bg-white w-full max-w-[620px] max-h-[88vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
+
+      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">📊 AI 상세 분석</h3>
+          <span class="text-[10px] text-blue-600">Executive Market Insight</span>
+        </div>
+        <button type="button" id="ai-detail-close" class="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+      </div>
+
+      <div id="ai-detail-content" class="px-5 py-4 text-xs text-gray-700 leading-5 overflow-y-auto max-h-[calc(88vh-64px)]">
+        상세 분석 데이터를 불러오는 중입니다.
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 상세분석 데이터 브리지: dashboard.js와 충돌하지 않고 최신 API 값을 보장 -->
+  <script>
+  (() => {
+    const fmtRate = (value) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? `${n.toFixed(2)}%` : "-";
+    };
+
+    const fmtGap = (value) => {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '<span class="text-gray-400">-</span>';
+      if (n > 0) return `<span class="text-blue-600 font-bold">+${n.toFixed(2)}%p</span>`;
+      if (n < 0) return `<span class="text-red-600 font-bold">▲${Math.abs(n).toFixed(2)}%p</span>`;
+      return '<span class="text-gray-500 font-bold">0.00%p</span>';
+    };
+
+    async function openFreshAIDetail() {
+      const modal = document.getElementById("ai-detail-modal");
+      const content = document.getElementById("ai-detail-content");
+      if (!modal || !content) return;
+
+      content.innerHTML = '<div class="py-8 text-center text-gray-400">시장 데이터를 불러오는 중입니다...</div>';
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+
+      try {
+        const [wooriRes, kpiRes] = await Promise.all([
+          fetch("/api/woori"),
+          fetch("/api/kpi")
+        ]);
+
+        const woori = wooriRes.ok ? await wooriRes.json() : {};
+        const kpi = kpiRes.ok ? await kpiRes.json() : {};
+        const aiTextRaw = document.getElementById("executive-summary-mini")?.innerText?.trim() || "시장 데이터를 기반으로 경쟁 상황을 분석하고 있습니다.";
+        const aiText = aiTextRaw
+          .replace(/📊\s*AI\s*상세분석\s*보기\s*>?/g, "")
+          .replace(/AI\s*상세분석\s*보기\s*>?/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+        const spread = Number.isFinite(Number(kpi.max_rate)) && Number.isFinite(Number(kpi.min_rate))
+          ? (Number(kpi.max_rate) - Number(kpi.min_rate)).toFixed(2)
+          : "-";
+
+        content.innerHTML = `
+          <div class="space-y-3">
+            <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              <div class="font-bold text-blue-700 text-xs mb-1">📈 시장 흐름 분석</div>
+              <div class="text-gray-600 leading-5">${aiText.replace(/\n/g, "<br>")}</div>
+            </div>
+
+            <div class="border border-gray-100 rounded-xl p-3">
+              <div class="font-bold text-gray-800 mb-3 text-sm">📊 시장 현황</div>
+              <div class="grid grid-cols-5 gap-2 text-center">
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <div class="text-[10px] text-gray-400">상품수</div>
+                  <div class="text-sm font-bold text-gray-800">${Number.isFinite(Number(kpi.product_count)) ? Number(kpi.product_count).toLocaleString() + "개" : "-"}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <div class="text-[10px] text-gray-400">평균금리</div>
+                  <div class="text-sm font-bold text-blue-700">${fmtRate(kpi.average_rate)}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <div class="text-[10px] text-gray-400">최고금리</div>
+                  <div class="text-sm font-bold text-blue-700">${fmtRate(kpi.max_rate)}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <div class="text-[10px] text-gray-400">최저금리</div>
+                  <div class="text-sm font-bold text-gray-700">${fmtRate(kpi.min_rate)}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-2">
+                  <div class="text-[10px] text-gray-400">금리 스프레드</div>
+                  <div class="text-sm font-bold text-orange-600">${spread === "-" ? "-" : spread + "%p"}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              <div class="font-bold text-blue-700 text-xs mb-2">🏦 우리금융 경쟁력 분석</div>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-white rounded-lg py-2">
+                  <div class="text-[10px] text-gray-400">시장순위</div>
+                  <div class="font-bold text-blue-700 text-sm">${woori.market_rank !== undefined ? woori.market_rank + "위" : "-"}</div>
+                </div>
+                <div class="bg-white rounded-lg py-2">
+                  <div class="text-[10px] text-gray-400">현재금리</div>
+                  <div class="font-bold text-gray-800 text-sm">${fmtRate(woori.rate)}</div>
+                </div>
+                <div class="bg-white rounded-lg py-2">
+                  <div class="text-[10px] text-gray-400">평균금리 대비</div>
+                  <div class="font-bold text-sm">${fmtGap(woori.average_gap)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-yellow-50 border border-yellow-100 rounded-lg px-3 py-2">
+              <div class="font-bold text-yellow-700 text-xs mb-1">⚠️ 주요 체크포인트</div>
+              <div class="text-gray-600 leading-5">• 경쟁사 최고금리 변화 모니터링<br>• 금리 상승 기관 발생 여부 확인<br>• 시장 평균 대비 경쟁력 점검</div>
+            </div>
+
+            <div class="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              <div class="font-bold text-amber-800 text-xs mb-1">🤖 AI 종합 판단</div>
+              <div class="text-gray-700 leading-5">우리금융의 현재 시장순위와 금리 수준을 기준으로 경쟁력을 지속 모니터링합니다. 경쟁사 금리 조정 시 평균 대비 격차와 순위 변화를 함께 확인할 필요가 있습니다.</div>
+            </div>
+          </div>`;
+      } catch (error) {
+        console.error("AI DETAIL DATA ERROR", error);
+        content.innerHTML = '<div class="py-8 text-center text-red-500">상세 분석 데이터를 불러오지 못했습니다.</div>';
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const detailButton = event.target.closest("#ai-detail-btn, #ai-side-detail-btn");
+      if (detailButton) {
+        event.preventDefault();
+        openFreshAIDetail();
+      }
+
+      const closeButton = event.target.closest("#ai-detail-close");
+      if (closeButton) {
+        const modal = document.getElementById("ai-detail-modal");
+        if (modal) {
+          modal.classList.add("hidden");
+          modal.classList.remove("flex");
+        }
+      }
+    });
+  })();
+  </script>
 
 </body>
 </html>
