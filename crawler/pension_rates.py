@@ -4,6 +4,8 @@ from datetime import datetime
 import requests,urllib3
 from bs4 import BeautifulSoup
 
+from ok import collect_ok
+
 BASE=Path(__file__).resolve().parent.parent
 DATA=BASE/"data"
 MAP=DATA/"pension_source_map.json"; ISA=DATA/"isa_rates.json"; IRP=DATA/"irp_rates.json"
@@ -1402,7 +1404,56 @@ def kb_irp(bank, kind, cfg):
         return o
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"acuon_isa":acuon_isa,"acuon_irp":acuon_irp,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp}
+
+# ============================================================
+# OK저축은행 공식 ISA / IRP Collector Adapter
+# ============================================================
+
+_OK_CACHE=None
+
+def get_ok_official():
+    global _OK_CACHE
+    if _OK_CACHE is None:
+        _OK_CACHE=collect_ok()
+    return _OK_CACHE
+
+def ok_official(bank,kind,cfg):
+    result=get_ok_official()
+    product_type=kind.upper()
+    item=result.get(product_type)
+
+    if not isinstance(item,dict):
+        o=blank(bank,kind,cfg,"fetch_or_parse_error")
+        error=result.get("errors",{}).get(
+            product_type,
+            "OK official collector returned no data"
+        )
+        o["error"]=str(error)
+        o["note"]=f"OK저축은행 공식 {product_type} API 수집 실패: {error}"
+        return o
+
+    periods=IRP_PERIODS if kind.lower()=="irp" else ISA_PERIODS
+    o=blank(bank,kind,cfg,item.get("status","verified_official"))
+    o["product"]=item.get("product_name") or cfg.get("product")
+    o["rates"]=item.get("rates",{f"{p}m":None for p in periods})
+    o["source_url"]=item.get("source_url") or cfg.get("url")
+    o["effective_date"]=item.get("effective_date")
+    o["depsGdsSqno"]=item.get("depsGdsSqno")
+    o["note"]=(
+        "OK저축은행 공식 홈페이지 상품정보 API 자동수집. "
+        f"{product_type} / depsGdsSqno={item.get('depsGdsSqno')} / "
+        f"시행일={item.get('effective_date') or '-'}"
+    )
+    return o
+
+def ok_isa(bank,kind,cfg):
+    return ok_official(bank,kind,cfg)
+
+def ok_irp(bank,kind,cfg):
+    return ok_official(bank,kind,cfg)
+
+
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"acuon_isa":acuon_isa,"acuon_irp":acuon_irp,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp,"ok_isa":ok_isa,"ok_irp":ok_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
@@ -1475,11 +1526,41 @@ def merge_irp_disclosure(bank,current,disclosure_banks):
 
 
 def main():
-    mp=load(MAP);a=[];b=[];disclosure_banks=load_irp_disclosure()
-    print("="*72);print("SBRateBot V5 ISA / IRP Collector v5 - Official Source Map");print("="*72)
+    mp=load(MAP)
+    a=[]
+    b=[]
+    disclosure_banks=load_irp_disclosure()
+
+    print("="*72)
+    print("SBRateBot V5 ISA / IRP Collector v5 - Official Source Map")
+    print("="*72)
+
     for i,(bank,cfg) in enumerate(mp["banks"].items(),1):
-        x=one(bank,"isa",cfg["isa"]);y=one(bank,"irp",cfg["irp"]);y=merge_irp_disclosure(bank,y,disclosure_banks);a.append(x);b.append(y)
+
+        if bank=="OK":
+            x=ok_isa(bank,"isa",cfg["isa"])
+            y=ok_irp(bank,"irp",cfg["irp"])
+            # OK 공식 IRP는 현재 12m/24m만 제공.
+            # 공식 None 값을 과거 공시값으로 보충하지 않는다.
+        else:
+            x=one(bank,"isa",cfg["isa"])
+            y=one(bank,"irp",cfg["irp"])
+            y=merge_irp_disclosure(bank,y,disclosure_banks)
+
+        a.append(x)
+        b.append(y)
+
         print(f"[{i}/{len(mp['banks'])}] {bank}")
-        print("  ISA:",x["rates"],f"[{x['status']}]");print("  IRP:",y["rates"],f"[{y['status']}]")
-    save(ISA,a);save(IRP,b);print("="*72);print("저장:",ISA);print("저장:",IRP)
-if __name__=="__main__":main()
+        print("  ISA:",x["rates"],f"[{x['status']}]")
+        print("  IRP:",y["rates"],f"[{y['status']}]")
+
+    save(ISA,a)
+    save(IRP,b)
+
+    print("="*72)
+    print("저장:",ISA)
+    print("저장:",IRP)
+
+
+if __name__=="__main__":
+    main()
