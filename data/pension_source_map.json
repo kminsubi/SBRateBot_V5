@@ -1,5 +1,5 @@
 {
-  "version": "v1.7",
+  "version": "v1.8",
   "updated_at": "2026-08-02",
   "strategy": "official_source_map",
   "target_periods": [
@@ -81,23 +81,14 @@
     },
     "신한": {
       "isa": {
-        "available": null,
-        "status": "research_pending",
-        "url": null,
-        "parser": "pending",
-        "periods": [
-          "3m",
-          "6m",
-          "12m",
-          "24m",
-          "36m"
-        ]
-      },
-      "irp": {
-        "available": null,
-        "status": "research_pending",
-        "url": null,
-        "parser": "pending",
+        "available": true,
+        "status": "verified_source",
+        "product": "ISA정기예금",
+        "source_type": "official_api",
+        "url": "https://www.shinhansavings.com/PD_0080",
+        "api_url": "https://www.shinhansavings.com/api/PD0080/selectSavPd.json",
+        "pd_cd": 24014,
+        "parser": "shinhan_isa",
         "periods": [
           "3m",
           "6m",
@@ -105,7 +96,25 @@
           "24m",
           "36m"
         ],
-        "period_policy_note": "3/6/12/24/36개월 전체 스키마 유지. 해당 금융사가 제공하지 않거나 공식 금리 미확인 만기는 None."
+        "note": "공식 API dscr10220.LIST의 CLASS_CD=24014, FM_TERM별 APLY_RATE 사용. 공식 가입기간은 3/6/12/24개월."
+      },
+      "irp": {
+        "available": true,
+        "status": "verified_source",
+        "product": "퇴직연금 정기예금(DC/IRP)",
+        "source_type": "official_api",
+        "url": "https://www.shinhansavings.com/PD_0081",
+        "api_url": "https://www.shinhansavings.com/api/PD0081/selectSavPd.json",
+        "pd_cd": 24015,
+        "parser": "shinhan_irp",
+        "periods": [
+          "3m",
+          "6m",
+          "12m",
+          "24m",
+          "36m"
+        ],
+        "note": "공식 API dscr10220.LIST의 DC/IRP형 CLASS_CD=24016, FM_TERM별 APLY_RATE 사용. dscr10230의 DB형 대표금리는 제외."
       }
     },
     "하나": {

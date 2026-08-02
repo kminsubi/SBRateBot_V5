@@ -405,7 +405,230 @@ def hana_irp(bank,kind,cfg):
     return o
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp}
+
+def shinhan_api_post(page_path, api_path, pd_cd):
+    """
+    신한저축은행 SPA 공식 상품 API 호출.
+    - 상품 페이지 GET으로 세션을 먼저 연다.
+    - /api/... endpoint에 JSON POST.
+    """
+    page_url = "https://www.shinhansavings.com" + page_path
+    api_url = "https://www.shinhansavings.com/api" + api_path
+
+    # 세션/쿠키 준비
+    S.get(
+        page_url,
+        timeout=20,
+        verify=False,
+        allow_redirects=True,
+    )
+
+    r = S.post(
+        api_url,
+        json={"PD_CD": pd_cd},
+        timeout=30,
+        verify=False,
+        headers={
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json;charset=UTF-8",
+            "Origin": "https://www.shinhansavings.com",
+            "Referer": page_url,
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    )
+    r.raise_for_status()
+
+    return r.json(), api_url
+
+
+def shinhan_rows(payload, key):
+    """
+    payload.data.<key>.LIST 추출.
+    row가 {'map': {...}} 형태면 map을 벗긴다.
+    """
+    data = payload.get("data", payload)
+
+    block = data.get(key, {}) if isinstance(data, dict) else {}
+    rows = block.get("LIST", []) if isinstance(block, dict) else []
+
+    result = []
+
+    if isinstance(rows, list):
+        for row in rows:
+            if isinstance(row, dict) and isinstance(row.get("map"), dict):
+                result.append(row["map"])
+            elif isinstance(row, dict):
+                result.append(row)
+
+    return result
+
+
+def shinhan_rates_by_fm_term(rows, allowed_class=None, allowed_name=None):
+    """
+    dscr10220.LIST의 FM_TERM을 실제 계약기간 기준으로 사용.
+    APLY_RATE = 약정 연이율.
+
+    예:
+      FM_TERM=3  -> 3개월 금리
+      FM_TERM=6  -> 6개월 금리
+      FM_TERM=12 -> 12개월 금리
+      FM_TERM=24 -> 24개월 금리
+      FM_TERM=36 -> 36개월 금리
+    """
+    rates = {
+        "3m": None,
+        "6m": None,
+        "12m": None,
+        "24m": None,
+        "36m": None,
+    }
+
+    for row in rows:
+        class_cd = str(row.get("CLASS_CD", "")).strip()
+        class_nm = str(row.get("CLASS_NM", "")).strip()
+
+        if allowed_class is not None and class_cd != str(allowed_class):
+            continue
+
+        if allowed_name is not None and allowed_name not in class_nm:
+            continue
+
+        try:
+            month = int(float(str(row.get("FM_TERM")).strip()))
+        except Exception:
+            continue
+
+        if month not in (3, 6, 12, 24, 36):
+            continue
+
+        try:
+            rate = float(str(row.get("APLY_RATE")).strip())
+        except Exception:
+            continue
+
+        if not (0 <= rate <= 10):
+            continue
+
+        rates[f"{month}m"] = rate
+
+    return rates
+
+
+def shinhan_isa(bank, kind, cfg):
+    """
+    신한저축은행 ISA정기예금
+    공식 API:
+      POST /api/PD0080/selectSavPd.json
+      PD_CD = 24014
+
+    dscr10220.LIST:
+      CLASS_CD 24014 = ISA정기예금
+      FM_TERM = 계약기간 시작월
+      APLY_RATE = 약정 연이율
+
+    현재 공식 가입기간: 3/6/12/24개월.
+    36개월은 미제공이므로 None.
+    """
+    try:
+        payload, api_url = shinhan_api_post(
+            "/PD_0080",
+            "/PD0080/selectSavPd.json",
+            24014,
+        )
+
+        rows = shinhan_rows(payload, "dscr10220")
+
+        rates = shinhan_rates_by_fm_term(
+            rows,
+            allowed_class="24014",
+        )
+
+        # 현재 상품 가입기간은 최대 24개월.
+        rates["36m"] = None
+
+        found = sum(v is not None for v in rates.values())
+
+        status = (
+            "verified_official"
+            if found >= 4
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank, kind, cfg, status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "신한저축은행 공식 ISA정기예금 API. "
+            "dscr10220.LIST의 CLASS_CD=24014, "
+            "FM_TERM별 APLY_RATE 약정이율 사용. "
+            "공식 가입기간 3/6/12/24개월, 36개월 미제공."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(bank, kind, cfg, "fetch_or_parse_error")
+        o["note"] = f"신한 ISA 공식 API 수집 실패: {error}"
+        return o
+
+
+def shinhan_irp(bank, kind, cfg):
+    """
+    신한저축은행 퇴직연금 정기예금 - DC/IRP형
+
+    공식 API:
+      POST /api/PD0081/selectSavPd.json
+      PD_CD = 24015
+
+    주의:
+    - dscr10230.LIST의 12개월 대표금리(예: 4.05%)는 DB형 표시값.
+    - IRP 모니터링은 dscr10220.LIST에서
+      CLASS_CD=24016 / CLASS_NM='퇴직연금정기예금(DC/IRP)'
+      의 APLY_RATE를 사용한다.
+    """
+    try:
+        payload, api_url = shinhan_api_post(
+            "/PD_0081",
+            "/PD0081/selectSavPd.json",
+            24015,
+        )
+
+        rows = shinhan_rows(payload, "dscr10220")
+
+        rates = shinhan_rates_by_fm_term(
+            rows,
+            allowed_class="24016",
+        )
+
+        found = sum(v is not None for v in rates.values())
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank, kind, cfg, status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "신한저축은행 공식 퇴직연금 정기예금 API. "
+            "DC/IRP형(CLASS_CD=24016)의 FM_TERM별 "
+            "APLY_RATE 약정이율 사용. "
+            "DB형 대표금리(dscr10230)는 IRP 금리로 사용하지 않음."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(bank, kind, cfg, "fetch_or_parse_error")
+        o["note"] = f"신한 IRP 공식 API 수집 실패: {error}"
+        return o
+
+
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
