@@ -18,6 +18,10 @@ def load(p):
     with p.open("r",encoding="utf-8-sig") as f:return json.load(f)
 def save(p,x):
     with p.open("w",encoding="utf-8") as f:json.dump(x,f,ensure_ascii=False,indent=2)
+
+def clean(value):
+    return re.sub(r"\s+"," ",str(value or "")).strip()
+
 def fetch(url):
     r=S.get(url,timeout=15,verify=False,allow_redirects=True); r.raise_for_status()
     if not r.encoding:r.encoding=r.apparent_encoding
@@ -221,7 +225,187 @@ def verified_source_pending(bank,kind,cfg):
     return o
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending}
+
+def hana_parse_rate(text):
+    text=clean(text)
+    m=re.search(r"(?<!\d)(\d{1,2}(?:\.\d{1,4})?)\s*%",text)
+    if not m:
+        return None
+    value=float(m.group(1))
+    return value if 0.1 <= value <= 10 else None
+
+
+def hana_table_rows(table):
+    rows=[]
+    for tr in table.find_all("tr"):
+        cells=[
+            clean(cell.get_text(" ",strip=True))
+            for cell in tr.find_all(["th","td"])
+        ]
+        if cells:
+            rows.append(cells)
+    return rows
+
+
+def hana_find_exact_table(soup,must_include):
+    candidates=[]
+    for table in soup.find_all("table"):
+        text=clean(table.get_text(" ",strip=True))
+        if all(token.lower() in text.lower() for token in must_include):
+            candidates.append((len(text),table))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x:x[0])
+    return candidates[0][1]
+
+
+def hana_isa(bank,kind,cfg):
+    url="https://www.hanasavings.com/YPR/YPR0103"
+    html,final_url=fetch(url)
+    soup=BeautifulSoup(html,"html.parser")
+
+    table=hana_find_exact_table(
+        soup,
+        ["가입기간","적용금리","3개월","6개월","12개월","24개월","36개월"]
+    )
+    if table is None:
+        return blank(bank,kind,cfg,"rate_not_found")
+
+    rows=hana_table_rows(table)
+    header=None
+    rate_row=None
+
+    for row in rows:
+        joined=" | ".join(row)
+
+        if (
+            "가입기간" in joined
+            and "3개월" in joined
+            and "6개월" in joined
+            and "12개월" in joined
+            and "24개월" in joined
+            and "36개월" in joined
+        ):
+            header=row
+
+        if (
+            "적용금리" in joined
+            and "복리수익율" not in joined
+        ):
+            rate_row=row
+
+    if not header or not rate_row:
+        return blank(bank,kind,cfg,"rate_not_found")
+
+    labels={
+        "3개월":"3m",
+        "6개월":"6m",
+        "12개월":"12m",
+        "24개월":"24m",
+        "36개월":"36m",
+    }
+
+    period_indexes={}
+
+    for idx,cell in enumerate(header):
+        key=labels.get(clean(cell))
+        if key:
+            period_indexes[idx]=key
+
+    rates={f"{p}m":None for p in ISA_PERIODS}
+
+    if len(rate_row)==len(header):
+        for idx,key in period_indexes.items():
+            if idx < len(rate_row):
+                rates[key]=hana_parse_rate(rate_row[idx])
+
+    else:
+        values=[]
+        for cell in rate_row:
+            value=hana_parse_rate(cell)
+            if value is not None:
+                values.append(value)
+
+        keys=["3m","6m","12m","24m","36m"]
+
+        if len(values)>=5:
+            for key,value in zip(keys,values[:5]):
+                rates[key]=value
+
+    found=sum(v is not None for v in rates.values())
+
+    o=blank(
+        bank,
+        kind,
+        cfg,
+        "verified_official" if found==5 else "review_required"
+    )
+    o["rates"]=rates
+    o["source_url"]=final_url
+    o["note"]="하나저축은행 공식 ISA 정기예금 상세페이지 적용금리"
+    return o
+
+
+def hana_irp(bank,kind,cfg):
+    url="https://www.hanasavings.com/YPR/YPR0104"
+    html,final_url=fetch(url)
+    soup=BeautifulSoup(html,"html.parser")
+
+    table=hana_find_exact_table(
+        soup,
+        ["DC/IRP형","연이율","3개월","6개월","1년","2년","3년"]
+    )
+
+    if table is None:
+        return blank(bank,kind,cfg,"rate_not_found")
+
+    rows=hana_table_rows(table)
+    irp_row=None
+
+    for row in rows:
+        joined=" | ".join(row)
+
+        if (
+            "DC/IRP형" in joined
+            and "연이율" in joined
+        ):
+            irp_row=row
+            break
+
+    if not irp_row:
+        return blank(bank,kind,cfg,"rate_not_found")
+
+    values=[]
+
+    for cell in irp_row:
+        value=hana_parse_rate(cell)
+        if value is not None:
+            values.append(value)
+
+    rates={f"{p}m":None for p in IRP_PERIODS}
+
+    if len(values)>=5:
+        rates["3m"]=values[0]
+        rates["6m"]=values[1]
+        rates["12m"]=values[2]
+        rates["24m"]=values[3]
+        rates["36m"]=values[4]
+
+    found=sum(v is not None for v in rates.values())
+
+    o=blank(
+        bank,
+        kind,
+        cfg,
+        "verified_official" if found==5 else "review_required"
+    )
+    o["rates"]=rates
+    o["source_url"]=final_url
+    o["note"]="하나저축은행 공식 퇴직연금 정기예금 DC/IRP형 연이율"
+    return o
+
+
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
