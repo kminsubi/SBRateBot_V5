@@ -1,5 +1,5 @@
 {
-  "version": "v1.8",
+  "version": "v1.9",
   "updated_at": "2026-08-02",
   "strategy": "official_source_map",
   "target_periods": [
@@ -48,27 +48,12 @@
       "isa": {
         "available": true,
         "status": "verified_source",
-        "product": "ISA 정기예금",
-        "source_type": "official_disclosure",
-        "url": "https://mbkd.kbsavings.com/mobweb/kiwicustomer/prt_fnce_prd_regt.do",
-        "parser": "verified_source_pending",
-        "note": "공식 공시에서 상품 존재 확인. ISA 전용 금리표 검증 전까지 금리는 None 유지.",
-        "periods": [
-          "3m",
-          "6m",
-          "12m",
-          "24m",
-          "36m"
-        ]
-      },
-      "irp": {
-        "available": true,
-        "status": "verified_source",
-        "product": "퇴직연금 정기예금(DC/IRP)",
-        "source_type": "official_disclosure",
-        "url": "https://mbkd.kbsavings.com/mobweb/kiwicustomer/prt_fnce_prd_regt.do",
-        "parser": "verified_source_pending",
-        "note": "공식 공시에서 상품 존재 확인. DC/IRP 전용 금리표 검증 전까지 금리는 None 유지.",
+        "product": "ISA정기예금",
+        "source_type": "official_api",
+        "url": "https://www.kbsavings.com/websquare/websquare.jsp?w2xPath=/jsp/depositItemInfo/depositItemInfo.xml&ITEM_CODE=IB13",
+        "api_url": "https://www.kbsavings.com/websquare/engine/callJsonService.jsp?serviceID=S_CommonItemService_getItemInfo",
+        "item_code": "IB13",
+        "parser": "kb_isa",
         "periods": [
           "3m",
           "6m",
@@ -76,7 +61,25 @@
           "24m",
           "36m"
         ],
-        "period_policy_note": "3/6/12/24/36개월 전체 스키마 유지. 해당 금융사가 제공하지 않거나 공식 금리 미확인 만기는 None."
+        "note": "공식 상품정보 API의 이율안내 표에서 기간별 적용이율 수집. 복리수익률/중도해지이율 제외."
+      },
+      "irp": {
+        "available": true,
+        "status": "verified_source",
+        "product": "퇴직연금 정기예금(DC/IRP)",
+        "source_type": "official_api",
+        "url": "https://www.kbsavings.com/websquare/websquare.jsp?w2xPath=/jsp/depositItemInfo/depositItemInfo.xml&ITEM_CODE=IB18",
+        "api_url": "https://www.kbsavings.com/websquare/engine/callJsonService.jsp?serviceID=S_CommonItemService_getItemInfo",
+        "item_code": "IB18",
+        "parser": "kb_irp",
+        "periods": [
+          "3m",
+          "6m",
+          "12m",
+          "24m",
+          "36m"
+        ],
+        "note": "공식 상품정보 API의 이율안내에서 DC/IRP(약정이율) 열만 수집. DB형/연수익률/중도해지이율 제외."
       }
     },
     "신한": {

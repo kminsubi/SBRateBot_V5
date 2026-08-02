@@ -628,7 +628,562 @@ def shinhan_irp(bank, kind, cfg):
         return o
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp}
+
+def kb_item_info(item_code):
+    """
+    KB저축은행 공식 WebSquare 상품정보 JSON 서비스.
+
+    v5.14:
+    WebSquare가 화면별로 JSON wrapper 형태를 다르게 받는 경우가 있어
+    v6 단독 테스트에서 사용한 payload 후보를 순차 시도한다.
+    """
+    page_url = (
+        "https://www.kbsavings.com/websquare/websquare.jsp"
+        "?w2xPath=/jsp/depositItemInfo/depositItemInfo.xml"
+        f"&ITEM_CODE={item_code}"
+    )
+    api_url = (
+        "https://www.kbsavings.com/websquare/engine/callJsonService.jsp"
+        "?serviceID=S_CommonItemService_getItemInfo"
+    )
+
+    # 브라우저와 유사하게 상품 상세 화면을 먼저 열어 세션 준비
+    warm = S.get(
+        page_url,
+        timeout=30,
+        verify=False,
+        allow_redirects=True,
+        headers={
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/142.0 Safari/537.36"
+            ),
+            "Accept": (
+                "text/html,application/xhtml+xml,"
+                "application/xml;q=0.9,*/*;q=0.8"
+            ),
+        },
+    )
+    warm.raise_for_status()
+
+    payloads = [
+        {"ITEM_CODE": item_code},
+        {"SEARCH": {"ITEM_CODE": item_code}},
+        {"data": {"ITEM_CODE": item_code}},
+        {"DATA": {"ITEM_CODE": item_code}},
+    ]
+
+    errors = []
+
+    for payload_no, request_payload in enumerate(payloads, start=1):
+        try:
+            r = S.post(
+                api_url,
+                json=request_payload,
+                timeout=30,
+                verify=False,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/142.0 Safari/537.36"
+                    ),
+                    "Accept": "application/json, text/plain, */*",
+                    "Content-Type": "application/json;charset=UTF-8",
+                    "Origin": "https://www.kbsavings.com",
+                    "Referer": page_url,
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            )
+            r.raise_for_status()
+
+            payload = r.json()
+            data = payload.get("DATA", payload)
+
+            if not isinstance(data, dict):
+                errors.append(
+                    f"payload#{payload_no}: DATA block not found"
+                )
+                continue
+
+            result = data.get("RESULT") or {}
+            info = data.get("RESULT_ITEM_INFO") or []
+            summary = data.get("RESULT_ITEM_SUMMARY") or []
+
+            if isinstance(result, list):
+                result = result[0] if result else {}
+
+            if not isinstance(result, dict):
+                result = {}
+
+            if not isinstance(info, list):
+                info = []
+
+            if not isinstance(summary, list):
+                summary = []
+
+            item_name = clean(
+                result.get("ITEM_NAME")
+            )
+
+            if item_name:
+                return (
+                    result,
+                    info,
+                    summary,
+                    api_url,
+                    payload_no,
+                )
+
+            errors.append(
+                f"payload#{payload_no}: ITEM_NAME empty"
+            )
+
+        except Exception as error:
+            errors.append(
+                f"payload#{payload_no}: {error}"
+            )
+
+    raise ValueError(
+        "KB official API request failed | "
+        + " | ".join(errors)
+    )
+
+
+def kb_info_html(info_rows, name):
+    """
+    RESULT_ITEM_INFO에서 특정 GUBN_NAME의 CONTENT_HTML/CONTENT 반환.
+    """
+    for row in info_rows:
+        if not isinstance(row, dict):
+            continue
+
+        if clean(row.get("GUBN_NAME")) == name:
+            return (
+                row.get("CONTENT_HTML")
+                or row.get("CONTENT")
+                or ""
+            )
+
+    return ""
+
+
+def kb_table_rows(content_html):
+    """
+    HTML 표를 행/열 텍스트 배열로 변환.
+    """
+    soup = BeautifulSoup(
+        str(content_html or ""),
+        "html.parser",
+    )
+
+    rows = []
+
+    for tr in soup.find_all("tr"):
+        cells = [
+            clean(cell.get_text(" ", strip=True))
+            for cell in tr.find_all(["th", "td"])
+        ]
+
+        if cells:
+            rows.append(cells)
+
+    return rows
+
+
+def kb_month(value):
+    text = clean(value)
+
+    m = re.search(
+        r"(?<!\d)(3|6|12|24|36)\s*개월",
+        text,
+    )
+    if m:
+        return int(m.group(1))
+
+    # 퇴직연금 표는 1년/2년/3년 형태
+    m = re.search(
+        r"(?<!\d)(1|2|3)\s*년",
+        text,
+    )
+    if m:
+        return int(m.group(1)) * 12
+
+    return None
+
+
+def kb_rate(value):
+    text = clean(value).replace(",", "")
+
+    m = re.search(
+        r"(-?\d{1,2}(?:\.\d{1,3})?)\s*%",
+        text,
+    )
+
+    if not m:
+        # 셀에 % 기호가 빠진 경우 보완
+        m = re.fullmatch(
+            r"\s*(-?\d{1,2}(?:\.\d{1,3})?)\s*",
+            text,
+        )
+
+    if not m:
+        return None
+
+    value = float(m.group(1))
+
+    if not (0 <= value <= 10):
+        return None
+
+    return value
+
+
+def kb_parse_isa_rate_table(content_html):
+    """
+    ISA정기예금 이율안내의 '적용이율'만 추출.
+    복리수익률 / 중도해지이율은 제외한다.
+
+    지원 구조:
+    1) 열형: 기간 | 3개월 | 6개월 | ...
+             적용이율 | 2.0% | 2.2% | ...
+    2) 행형: 3개월 | 2.0%
+    """
+    rates = {
+        "3m": None,
+        "6m": None,
+        "12m": None,
+        "24m": None,
+        "36m": None,
+    }
+
+    rows = kb_table_rows(content_html)
+
+    # 1) 열형 표
+    period_row = None
+    rate_row = None
+
+    for row in rows:
+        joined = " ".join(row)
+
+        if (
+            "기간" in joined
+            and sum(
+                kb_month(cell) is not None
+                for cell in row
+            ) >= 3
+        ):
+            period_row = row
+
+        if (
+            row
+            and (
+                "적용이율" in row[0]
+                or row[0] == "이율"
+            )
+            and len(row) >= 4
+        ):
+            rate_row = row
+
+        if period_row and rate_row:
+            break
+
+    if period_row and rate_row:
+        months = [
+            kb_month(cell)
+            for cell in period_row
+            if kb_month(cell) is not None
+        ]
+        values = [
+            kb_rate(cell)
+            for cell in rate_row[1:]
+        ]
+
+        values = [
+            value
+            for value in values
+            if value is not None
+        ]
+
+        if len(months) == len(values):
+            for month, value in zip(months, values):
+                if month in ISA_PERIODS:
+                    rates[f"{month}m"] = value
+
+    # 2) 행형 보완
+    for row in rows:
+        if len(row) < 2:
+            continue
+
+        month = kb_month(row[0])
+        if month not in ISA_PERIODS:
+            continue
+
+        # 해당 행에서 첫 금리값만 사용
+        value = None
+
+        for cell in row[1:]:
+            value = kb_rate(cell)
+            if value is not None:
+                break
+
+        if (
+            value is not None
+            and rates[f"{month}m"] is None
+        ):
+            rates[f"{month}m"] = value
+
+    return rates
+
+
+def kb_parse_irp_rate_table(content_html):
+    """
+    퇴직연금 정기예금 표에서 DC/IRP '약정이율' 열만 추출.
+    DB형 / 연수익률 / 중도해지이율은 제외한다.
+    """
+    rates = {
+        "3m": None,
+        "6m": None,
+        "12m": None,
+        "24m": None,
+        "36m": None,
+    }
+
+    rows = kb_table_rows(content_html)
+
+    header_index = None
+    dc_irp_index = None
+
+    # 가장 최근 표를 우선하기 위해 뒤에서부터 탐색
+    for idx in range(len(rows) - 1, -1, -1):
+        row = rows[idx]
+
+        for col_idx, cell in enumerate(row):
+            normalized = (
+                cell.replace(" ", "")
+                .replace("\xa0", "")
+                .upper()
+            )
+
+            if (
+                "DC/IRP" in normalized
+                and "약정이율" in normalized
+            ):
+                header_index = idx
+                dc_irp_index = col_idx
+                break
+
+        if dc_irp_index is not None:
+            break
+
+    if dc_irp_index is not None:
+        for row in rows[header_index + 1:]:
+            if not row:
+                continue
+
+            month = kb_month(row[0])
+
+            if month not in IRP_PERIODS:
+                # 다음 섹션에 들어가면 종료
+                joined = " ".join(row)
+                if (
+                    rates["3m"] is not None
+                    and (
+                        "중도해지" in joined
+                        or "만기후" in joined
+                    )
+                ):
+                    break
+                continue
+
+            if dc_irp_index >= len(row):
+                continue
+
+            value = kb_rate(
+                row[dc_irp_index]
+            )
+
+            if value is not None:
+                rates[f"{month}m"] = value
+
+    # HTML이 비정상적으로 펼쳐진 경우 텍스트 기반 최종 보완.
+    # 현재 KB 표의 순서는:
+    # 계약기간 / DB약정 / DB수익률 / DC/IRP약정 / DC/IRP수익률
+    if sum(v is not None for v in rates.values()) < 5:
+        text = clean(
+            BeautifulSoup(
+                str(content_html or ""),
+                "html.parser",
+            ).get_text(" ", strip=True)
+        )
+
+        # 최신 기준일 블록이 있으면 마지막 블록 사용
+        sections = re.split(
+            r"(?=기준일\s*\d{4}\.\d{1,2}\.\d{1,2})",
+            text,
+        )
+        current = sections[-1] if sections else text
+
+        pattern = re.compile(
+            r"(3개월|6개월|1년|2년|3년)"
+            r"\s+"
+            r"(\d+(?:\.\d+)?)\s*%"
+            r"\s+"
+            r"(\d+(?:\.\d+)?)\s*%"
+            r"\s+"
+            r"(\d+(?:\.\d+)?)\s*%"
+            r"\s+"
+            r"(\d+(?:\.\d+)?)\s*%",
+            re.I,
+        )
+
+        for m in pattern.finditer(current):
+            month = kb_month(m.group(1))
+            value = float(m.group(4))  # DC/IRP 약정이율
+
+            if (
+                month in IRP_PERIODS
+                and 0 <= value <= 10
+            ):
+                rates[f"{month}m"] = value
+
+    return rates
+
+
+def kb_isa(bank, kind, cfg):
+    """
+    KB저축은행 ISA정기예금
+    ITEM_CODE=IB13
+    공식 상품정보 API의 이율안내 > 적용이율 사용.
+    """
+    try:
+        result, info, summary, api_url, payload_no = kb_item_info("IB13")
+
+        product_name = clean(
+            result.get("ITEM_NAME")
+        )
+
+        if "ISA정기예금" not in product_name:
+            raise ValueError(
+                f"Unexpected KB ISA product: {product_name}"
+            )
+
+        content_html = kb_info_html(
+            info,
+            "이율안내",
+        )
+
+        rates = kb_parse_isa_rate_table(
+            content_html
+        )
+
+        found = sum(
+            v is not None
+            for v in rates.values()
+        )
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank, kind, cfg, status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "KB저축은행 공식 WebSquare 상품정보 API. "
+            "ITEM_CODE=IB13(ISA정기예금)의 이율안내 표에서 "
+            "기간별 적용이율만 수집. "
+            "복리수익률/중도해지이율 제외. "
+            f"API payload#{payload_no} 사용."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            "fetch_or_parse_error",
+        )
+        o["note"] = (
+            f"KB ISA 공식 API 수집 실패: {error}"
+        )
+        o["error"] = str(error)
+        return o
+
+
+def kb_irp(bank, kind, cfg):
+    """
+    KB저축은행 퇴직연금 정기예금
+    ITEM_CODE=IB18
+    공식 상품정보 API의 이율안내에서
+    DC/IRP(약정이율) 열만 수집.
+    """
+    try:
+        result, info, summary, api_url, payload_no = kb_item_info("IB18")
+
+        product_name = clean(
+            result.get("ITEM_NAME")
+        )
+
+        if "퇴직연금" not in product_name:
+            raise ValueError(
+                f"Unexpected KB IRP product: {product_name}"
+            )
+
+        content_html = kb_info_html(
+            info,
+            "이율안내",
+        )
+
+        rates = kb_parse_irp_rate_table(
+            content_html
+        )
+
+        found = sum(
+            v is not None
+            for v in rates.values()
+        )
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank, kind, cfg, status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "KB저축은행 공식 WebSquare 상품정보 API. "
+            "ITEM_CODE=IB18(퇴직연금 정기예금)의 "
+            "DC/IRP(약정이율)만 수집. "
+            "DB형/연수익률/중도해지이율 제외. "
+            f"API payload#{payload_no} 사용."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            "fetch_or_parse_error",
+        )
+        o["note"] = (
+            f"KB IRP 공식 API 수집 실패: {error}"
+        )
+        o["error"] = str(error)
+        return o
+
+
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
