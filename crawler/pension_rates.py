@@ -197,13 +197,232 @@ def nh_safe_pending(bank,kind,cfg):
     return o
 
 
+def acuon_api_post(product_code):
+    """
+    애큐온저축은행 공식 JEX 상품정보 API.
+    POST /sd_TUB_GD_INFO_T.jct
+    _JSON_={"GD_INFO_C":"상품코드"}
+    """
+    page_url = f"https://www.acuonsb.co.kr/sv_dpt{product_code}.act"
+    api_url = "https://www.acuonsb.co.kr/sd_TUB_GD_INFO_T.jct"
+
+    # 상품 페이지를 먼저 열어 브라우저 세션과 동일하게 준비
+    try:
+        S.get(
+            page_url,
+            timeout=20,
+            verify=False,
+            allow_redirects=True,
+        )
+    except Exception:
+        pass
+
+    payload_json = json.dumps(
+        {"GD_INFO_C": str(product_code)},
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+    r = S.post(
+        api_url,
+        data={"_JSON_": payload_json},
+        timeout=30,
+        verify=False,
+        allow_redirects=True,
+        headers={
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "Origin": "https://www.acuonsb.co.kr",
+            "Referer": page_url,
+            "X-Requested-With": "XMLHttpRequest",
+        },
+    )
+    r.raise_for_status()
+    return r.json(), api_url
+
+
+def acuon_rec001(payload):
+    """
+    애큐온 JEX 응답에서 REC_001 금리행을 재귀적으로 찾는다.
+    """
+    found = []
+
+    def walk(obj):
+        if isinstance(obj, dict):
+            value = obj.get("REC_001")
+            if isinstance(value, list):
+                found.extend(x for x in value if isinstance(x, dict))
+            elif isinstance(value, dict):
+                found.append(value)
+
+            for v in obj.values():
+                walk(v)
+
+        elif isinstance(obj, list):
+            for v in obj:
+                walk(v)
+
+    walk(payload)
+    return found
+
+
+def acuon_month(value):
+    text = clean(value)
+
+    # API의 COND_TRM이 숫자 월 단위인 경우
+    try:
+        n = int(float(text))
+        if n in (3, 6, 12, 24, 36):
+            return n
+    except Exception:
+        pass
+
+    m = re.search(r"(?<!\d)(3|6|12|24|36)\s*(?:개월|월)", text)
+    if m:
+        return int(m.group(1))
+
+    m = re.search(r"(?<!\d)(1|2|3)\s*년", text)
+    if m:
+        return int(m.group(1)) * 12
+
+    return None
+
+
+def acuon_rate(value):
+    text = clean(value).replace(",", "").replace("%", "")
+    try:
+        rate = float(text)
+    except Exception:
+        m = re.search(r"(-?\d{1,2}(?:\.\d{1,4})?)", text)
+        if not m:
+            return None
+        rate = float(m.group(1))
+
+    return rate if 0 <= rate <= 10 else None
+
+
+def acuon_rates_from_rec001(rows, irp=False):
+    """
+    INT_TYPE=1 약정금리만 사용.
+    IRP 응답에 DB/DC·IRP 행이 함께 있으면 DC/IRP 행만 우선한다.
+    """
+    rates = {f"{p}m": None for p in (IRP_PERIODS if irp else ISA_PERIODS)}
+
+    selected = []
+
+    for row in rows:
+        if clean(row.get("INT_TYPE")) != "1":
+            continue
+
+        if irp:
+            row_text = " ".join(clean(v) for v in row.values()).upper()
+            # DB형과 DC/IRP형이 함께 있는 응답에서 DB형 제거
+            if "DB" in row_text and "DC" not in row_text and "IRP" not in row_text:
+                continue
+
+        selected.append(row)
+
+    # IRP 구분문구가 별도 필드에 없더라도 API의 DC/IRP 블록이
+    # INT_TYPE=1로 반환되는 구조를 그대로 처리한다.
+    for row in selected:
+        month = acuon_month(row.get("COND_TRM"))
+        if month not in (3, 6, 12, 24, 36):
+            continue
+
+        rate = acuon_rate(row.get("CONT_APLY_INT"))
+        if rate is None:
+            continue
+
+        key = f"{month}m"
+
+        # 동일 기간이 여러 번 나오면 IRP/DC 문구가 있는 행을 우선
+        if rates[key] is None:
+            rates[key] = rate
+        elif irp:
+            row_text = " ".join(clean(v) for v in row.values()).upper()
+            if "DC" in row_text or "IRP" in row_text:
+                rates[key] = rate
+
+    return rates
+
+
+def acuon_isa(bank,kind,cfg):
+    """
+    애큐온저축은행 ISA 정기예금.
+    GD_INFO_C=1201170 / REC_001 / INT_TYPE=1 /
+    COND_TRM별 CONT_APLY_INT 약정금리.
+    """
+    try:
+        payload, api_url = acuon_api_post("1201170")
+        rows = acuon_rec001(payload)
+        rates = acuon_rates_from_rec001(rows, irp=False)
+        found = sum(v is not None for v in rates.values())
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank,kind,cfg,status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "애큐온저축은행 공식 JEX 상품정보 API. "
+            "GD_INFO_C=1201170, REC_001의 INT_TYPE=1 약정금리 중 "
+            "COND_TRM별 CONT_APLY_INT 사용."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(bank,kind,cfg,"fetch_or_parse_error")
+        o["note"] = f"애큐온 ISA 공식 API 수집 실패: {error}"
+        o["error"] = str(error)
+        return o
+
+
+def acuon_irp(bank,kind,cfg):
+    """
+    애큐온저축은행 퇴직연금 정기예금 DC/IRP형.
+    GD_INFO_C=1201171 / REC_001 / INT_TYPE=1 /
+    COND_TRM별 CONT_APLY_INT 약정금리.
+    """
+    try:
+        payload, api_url = acuon_api_post("1201171")
+        rows = acuon_rec001(payload)
+        rates = acuon_rates_from_rec001(rows, irp=True)
+        found = sum(v is not None for v in rates.values())
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(bank,kind,cfg,status)
+        o["rates"] = rates
+        o["source_url"] = api_url
+        o["note"] = (
+            "애큐온저축은행 공식 JEX 퇴직연금 상품정보 API. "
+            "GD_INFO_C=1201171의 DC/IRP형 약정금리만 사용. "
+            "REC_001, INT_TYPE=1, COND_TRM별 CONT_APLY_INT 기준."
+        )
+        return o
+
+    except Exception as error:
+        o = blank(bank,kind,cfg,"fetch_or_parse_error")
+        o["note"] = f"애큐온 IRP 공식 API 수집 실패: {error}"
+        o["error"] = str(error)
+        return o
+
+
 def acuon_safe_pending(bank,kind,cfg):
-    periods=IRP_PERIODS if kind.lower()=="irp" else ISA_PERIODS
-    rates={f"{p}m":None for p in periods}
-    o=blank(bank,kind,cfg,"verified_source_rate_pending")
-    o["rates"]=rates
-    o["note"]=cfg.get("note")
-    return o
+    # 이전 source map과의 호환용. 새 source map에서는 acuon_isa/acuon_irp 사용.
+    return acuon_irp(bank,kind,cfg) if kind.lower()=="irp" else acuon_isa(bank,kind,cfg)
 
 
 def sbi_safe_pending(bank,kind,cfg):
@@ -1183,7 +1402,7 @@ def kb_irp(bank, kind, cfg):
         return o
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp}
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"acuon_isa":acuon_isa,"acuon_irp":acuon_irp,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
