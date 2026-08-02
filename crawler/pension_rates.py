@@ -5,6 +5,7 @@ import requests,urllib3
 from bs4 import BeautifulSoup
 
 from ok import collect_ok
+from db import collect_db
 
 BASE=Path(__file__).resolve().parent.parent
 DATA=BASE/"data"
@@ -1525,6 +1526,60 @@ def merge_irp_disclosure(bank,current,disclosure_banks):
     return current
 
 
+
+# ============================================================
+# DB저축은행 공식 ISA Collector Adapter
+# ============================================================
+
+_DB_CACHE=None
+
+
+def get_db_official():
+    global _DB_CACHE
+
+    if _DB_CACHE is None:
+        _DB_CACHE=collect_db()
+
+    return _DB_CACHE
+
+
+def db_isa_official(bank,kind,cfg):
+    result=get_db_official()
+    item=result.get("ISA")
+
+    if not isinstance(item,dict):
+        o=blank(bank,kind,cfg,"fetch_or_parse_error")
+        error=result.get("errors",{}).get(
+            "ISA",
+            "DB official collector returned no ISA data"
+        )
+        o["error"]=str(error)
+        o["note"]=f"DB저축은행 공식 ISA API 수집 실패: {error}"
+        return o
+
+    o=blank(
+        bank,
+        kind,
+        cfg,
+        item.get("status","verified_official")
+    )
+
+    o["product"]=item.get("product_name") or cfg.get("product")
+    o["rates"]=item.get(
+        "rates",
+        {f"{p}m":None for p in ISA_PERIODS}
+    )
+    o["source_url"]=item.get("source_url") or cfg.get("url")
+    o["effective_date"]=item.get("effective_date")
+    o["api_url"]=item.get("api_url")
+    o["note"]=(
+        "DB저축은행 공식 홈페이지 ISA 금리안내 API 자동수집. "
+        f"기준일={item.get('effective_date') or '-'}"
+    )
+
+    return o
+
+
 def main():
     mp=load(MAP)
     a=[]
@@ -1537,22 +1592,49 @@ def main():
 
     for i,(bank,cfg) in enumerate(mp["banks"].items(),1):
 
+        # OK:
+        # ISA/IRP 모두 검증 완료된 공식 홈페이지 API를 사용.
+        # 공식 API에서 제공하지 않는 기간을 과거 공시값으로 보충하지 않는다.
         if bank=="OK":
             x=ok_isa(bank,"isa",cfg["isa"])
             y=ok_irp(bank,"irp",cfg["irp"])
-            # OK 공식 IRP는 현재 12m/24m만 제공.
-            # 공식 None 값을 과거 공시값으로 보충하지 않는다.
+
+        # DB:
+        # ISA는 검증 완료된 DB 공식 홈페이지 API 사용.
+        # IRP는 아직 공식 API 미통합이므로 기존 source-map 결과에
+        # 사업자 공시 데이터를 fill-only 방식으로 병합한다.
+        elif bank=="DB":
+            x=db_isa_official(bank,"isa",cfg["isa"])
+            y=one(bank,"irp",cfg["irp"])
+            y=merge_irp_disclosure(
+                bank,
+                y,
+                disclosure_banks
+            )
+
         else:
             x=one(bank,"isa",cfg["isa"])
             y=one(bank,"irp",cfg["irp"])
-            y=merge_irp_disclosure(bank,y,disclosure_banks)
+            y=merge_irp_disclosure(
+                bank,
+                y,
+                disclosure_banks
+            )
 
         a.append(x)
         b.append(y)
 
         print(f"[{i}/{len(mp['banks'])}] {bank}")
-        print("  ISA:",x["rates"],f"[{x['status']}]")
-        print("  IRP:",y["rates"],f"[{y['status']}]")
+        print(
+            "  ISA:",
+            x["rates"],
+            f"[{x['status']}]"
+        )
+        print(
+            "  IRP:",
+            y["rates"],
+            f"[{y['status']}]"
+        )
 
     save(ISA,a)
     save(IRP,b)

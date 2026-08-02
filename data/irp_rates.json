@@ -12,7 +12,7 @@
     },
     "status": "verified_official_partial",
     "source_url": "https://www.woorisavingsbank.com/product/deposite/list.do",
-    "updated_at": "2026-08-02 17:05:29",
+    "updated_at": "2026-08-02 18:59:24",
     "note": "우리금융저축은행 공식 상품목록 DC형/IRP형 12개월 대표금리",
     "disclosure_status": "verified_disclosure",
     "disclosure_sources": [
@@ -52,7 +52,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.kbsavings.com/websquare/engine/callJsonService.jsp?serviceID=S_CommonItemService_getItemInfo",
-    "updated_at": "2026-08-02 17:05:30",
+    "updated_at": "2026-08-02 18:59:25",
     "note": "KB저축은행 공식 WebSquare 상품정보 API. ITEM_CODE=IB18(퇴직연금 정기예금)의 DC/IRP(약정이율)만 수집. DB형/연수익률/중도해지이율 제외. API payload#2 사용."
   },
   {
@@ -68,7 +68,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.shinhansavings.com/api/PD0081/selectSavPd.json",
-    "updated_at": "2026-08-02 17:05:30",
+    "updated_at": "2026-08-02 18:59:25",
     "note": "신한저축은행 공식 퇴직연금 정기예금 API. DC/IRP형(CLASS_CD=24016)의 FM_TERM별 APLY_RATE 약정이율 사용. DB형 대표금리(dscr10230)는 IRP 금리로 사용하지 않음."
   },
   {
@@ -84,7 +84,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.hanasavings.com/YPR/YPR0104",
-    "updated_at": "2026-08-02 17:05:31",
+    "updated_at": "2026-08-02 18:59:26",
     "note": "하나저축은행 공식 퇴직연금 정기예금 DC/IRP형 연이율"
   },
   {
@@ -100,7 +100,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": "https://www.sbisb.co.kr/gds0010100.act",
-    "updated_at": "2026-08-02 17:05:31",
+    "updated_at": "2026-08-02 18:59:26",
     "note": "공식 상품공시 화면에 퇴직연금 카테고리 존재 확인. 상세 금리 값은 현재 공개 HTML에서 확인되지 않아 None 유지.",
     "disclosure_status": "verified_disclosure",
     "disclosure_sources": [
@@ -140,7 +140,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.oksavingsbank.com/#/gdsDepsMngmDtl?depsGdsSqno=1237&pageNo=2&menuCd=00365&mngmTr=00000&inrtTp=00000&etryMthd=00000&acmlMthd=00000&entrObjc=00000&frdmEtryMthd=00000",
-    "updated_at": "2026-08-02 17:05:31",
+    "updated_at": "2026-08-02 18:59:26",
     "effective_date": "2026-08-01",
     "depsGdsSqno": "1237",
     "note": "OK저축은행 공식 홈페이지 상품정보 API 자동수집. IRP / depsGdsSqno=1237 / 시행일=2026-08-01"
@@ -158,7 +158,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": null,
-    "updated_at": "2026-08-02 17:05:31",
+    "updated_at": "2026-08-02 18:59:26",
     "disclosure_status": "verified_disclosure",
     "disclosure_sources": [
       {
@@ -197,7 +197,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": null,
-    "updated_at": "2026-08-02 17:05:31",
+    "updated_at": "2026-08-02 18:59:26",
     "disclosure_status": "verified_disclosure_partial",
     "disclosure_sources": [
       {
@@ -222,7 +222,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.acuonsb.co.kr/sd_TUB_GD_INFO_T.jct",
-    "updated_at": "2026-08-02 17:05:32",
+    "updated_at": "2026-08-02 18:59:26",
     "note": "애큐온저축은행 공식 JEX 퇴직연금 상품정보 API. GD_INFO_C=1201171의 DC/IRP형 약정금리만 사용. REC_001, INT_TYPE=1, COND_TRM별 CONT_APLY_INT 기준."
   },
   {
@@ -238,7 +238,7 @@
     },
     "status": "verified_official",
     "source_url": "https://www.daolsb.com/deposit/goods.do?gds_cd=DA106",
-    "updated_at": "2026-08-02 17:05:32",
+    "updated_at": "2026-08-02 18:59:26",
     "note": "다올저축은행 공식 퇴직연금 정기예금 DC형/IRP형 약정이율, 최종금리변경일 2026-08-01"
   },
   {
@@ -254,7 +254,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": null,
-    "updated_at": "2026-08-02 17:05:32",
+    "updated_at": "2026-08-02 18:59:27",
     "disclosure_status": "verified_disclosure",
     "disclosure_sources": [
       {
@@ -293,7 +293,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": null,
-    "updated_at": "2026-08-02 17:05:32",
+    "updated_at": "2026-08-02 18:59:27",
     "disclosure_status": "verified_disclosure",
     "disclosure_sources": [
       {
@@ -332,7 +332,7 @@
     },
     "status": "verified_disclosure_merged",
     "source_url": "https://www.nhsavingsbank.co.kr/dpisPrd/view.do?prdCode=24601",
-    "updated_at": "2026-08-02 17:05:32",
+    "updated_at": "2026-08-02 18:59:27",
     "note": "공식 상세페이지에서 상품 존재 확인. 금리는 월별 공지/첨부 기반이라 전용 수집기 전까지 None 유지.",
     "disclosure_status": "verified_disclosure_partial",
     "disclosure_sources": [
