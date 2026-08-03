@@ -1,0 +1,125 @@
+SBRateBot V5 ISA / IRP Target Rate Collector v4.2
+========================================================================
+대상은행: 12
+우리금융, KB, 신한, 하나, SBI, OK, 한국투자, 웰컴, 애큐온, 다올, DB, JT친애
+
+[1/12] 우리금융
+  홈페이지 : http://www.woorisavingsbank.com/
+  ISA URL : 집중 탐색 중...
+            https://woorisavingsbank.com:443/product/deposite/list.do
+  IRP URL : 집중 탐색 중...
+            https://woorisavingsbank.com:443/product/deposite/list.do
+  ISA 금리 : {'3m': None, '6m': 1.5, '12m': 8.0, '24m': None, '36m': 1.5} [auto_extracted]
+  IRP 금리 : {'3m': None, '6m': 1.5, '12m': 8.0, '24m': None, '36m': 1.5} [auto_extracted]
+
+[2/12] KB
+  홈페이지 : http://www.kbsavings.com/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[3/12] 신한
+  홈페이지 : http://www.shinhansavings.com/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[4/12] 하나
+  홈페이지 : http://www.hanasavings.com/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[5/12] SBI
+  홈페이지 : http://www.sbisb.co.kr/
+  ISA URL : 집중 탐색 중...
+            https://www.sbisb.co.kr/mai0020100.act
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [rate_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[6/12] OK
+  홈페이지 : http://www.oksavingsbank.com/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[7/12] 한국투자
+  한국투자 전용 수집 : Selenium/WebSquare
+  ISA 금리 : {'3m': 2.0, '6m': 2.3, '12m': 3.75, '24m': 2.0, '36m': 2.0} [auto_extracted]
+  IRP DC/IRP : {'3m': 2.0, '6m': 2.3, '12m': 3.75, '24m': 2.0, '36m': 2.0} [auto_extracted]
+  IRP DB : {'3m': 2.0, '6m': 2.3, '12m': 3.95, '24m': 2.0, '36m': 2.0}
+
+[8/12] 웰컴
+  홈페이지 : http://www.welcomebank.co.kr
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[9/12] 애큐온
+  홈페이지 : http://www.acuonsb.co.kr
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[10/12] 다올
+  홈페이지 : https://www.daolsb.com
+  ISA URL : 집중 탐색 중...
+            https://www.daolsb.com/deposit/goods.do?gds_cd=DA104&gds_clss_cd=DA
+  IRP URL : 집중 탐색 중...
+            https://www.daolsb.com/deposit/goods.do?gds_cd=DA106
+  ISA 금리 : {'3m': 2.5, '6m': 4.05, '12m': 4.05, '24m': 2.56, '36m': 3.8} [auto_extracted]
+  IRP 금리 : {'3m': 4.12, '6m': 4.12, '12m': 4.12, '24m': 3.83, '36m': 3.8} [auto_extracted]
+
+[11/12] DB
+  홈페이지 : http://www.idbsb.com/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+[12/12] JT친애
+  홈페이지 : https://www.jtchinae-bank.co.kr/
+  ISA URL : 집중 탐색 중...
+            미확인
+  IRP URL : 집중 탐색 중...
+            미확인
+  ISA 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+  IRP 금리 : {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [source_not_found]
+
+========================================================================
+수집 완료
+========================================================================
+ISA auto_extracted : 3
+ISA review_required: 0
+IRP auto_extracted : 3
+IRP review_required: 0
+
+ISA 저장: C:\SBRateBot_V5\data\isa_rates.json
+IRP 저장: C:\SBRateBot_V5\data\irp_rates.json
+URL 저장: C:\SBRateBot_V5\data\pension_sources.json
+
+※ auto_extracted = 3개 이상 기간 금리 자동확인
+※ review_required = 1~2개 기간만 확인되어 수동검증 필요
+※ rate_not_found = 페이지는 찾았으나 현재 정규식으로 금리표를 읽지 못함
