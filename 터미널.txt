@@ -1,0 +1,42 @@
+========================================================================
+SBRateBot V5 ISA / IRP Collector v5 - Official Source Map
+========================================================================
+[1/13] 우리금융
+  ISA: {'3m': 2.4, '6m': 4.21, '12m': 4.21, '24m': 3.3, '36m': 3.0} [verified_official]
+  IRP: {'3m': None, '6m': None, '12m': 4.0, '24m': 3.6, '36m': 3.0} [verified_official_partial]
+[2/13] KB
+  ISA: {'3m': 2.0, '6m': 2.2, '12m': 3.7, '24m': 2.3, '36m': 2.3} [verified_official]
+  IRP: {'3m': 1.7, '6m': 1.7, '12m': 3.6, '24m': 2.6, '36m': 2.4} [verified_official]
+[3/13] 신한
+  ISA: {'3m': 1.9, '6m': 2.4, '12m': 3.65, '24m': 3.0, '36m': None} [verified_official]
+  IRP: {'3m': 1.8, '6m': 2.3, '12m': 3.55, '24m': 2.0, '36m': 1.9} [verified_official]
+[4/13] 하나
+  ISA: {'3m': 1.1, '6m': 3.1, '12m': 3.68, '24m': 2.9, '36m': 2.8} [verified_official]
+  IRP: {'3m': 2.6, '6m': 2.6, '12m': 3.7, '24m': 3.0, '36m': 2.9} [verified_official]
+[5/13] SBI
+  ISA: {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [verified_source_rate_pending]
+  IRP: {'3m': None, '6m': None, '12m': 4.1, '24m': 4.2, '36m': 4.2} [verified_disclosure_merged][6/13] OK
+  ISA: {'3m': 3.1, '6m': 3.5, '12m': 4.0, '24m': 3.5, '36m': 3.1} [verified_official]
+  IRP: {'3m': None, '6m': None, '12m': 4.0, '24m': 3.5, '36m': None} [verified_official]
+[7/13] 한국투자
+  ISA: {'3m': 2.0, '6m': 2.3, '12m': 3.75, '24m': 2.0, '36m': 2.0} [verified_official]
+  IRP: {'3m': 2.0, '6m': 2.3, '12m': 3.75, '24m': 2.0, '36m': 2.0} [verified_official]
+[8/13] 웰컴
+  ISA: {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [research_pending]
+  IRP: {'3m': None, '6m': None, '12m': 3.85, '24m': None, '36m': None} [verified_disclosure_merged]
+[9/13] 애큐온
+  ISA: {'3m': 1.5, '6m': 2.2, '12m': 2.7, '24m': 2.5, '36m': 2.4} [verified_official]
+  IRP: {'3m': 1.9, '6m': 2.3, '12m': 4.05, '24m': 4.1, '36m': 3.85} [verified_official]
+[10/13] 다올
+  ISA: {'3m': 2.1, '6m': 2.3, '12m': 3.35, '24m': 2.5, '36m': 2.4} [verified_official]
+  IRP: {'3m': None, '6m': None, '12m': 4.05, '24m': 3.47, '36m': 2.45} [verified_official]
+[11/13] DB
+  ISA: {'3m': 2.2, '6m': 2.5, '12m': 3.7, '24m': 2.1, '36m': None} [verified_official]
+  IRP: {'3m': None, '6m': None, '12m': 3.85, '24m': 3.85, '36m': 3.75} [verified_disclosure_merged]
+[12/13] JT친애
+  ISA: {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [research_pending]
+  IRP: {'3m': None, '6m': None, '12m': 4.05, '24m': 3.85, '36m': 3.55} [verified_disclosure_merged]
+[13/13] NH
+  ISA: {'3m': None, '6m': None, '12m': None, '24m': None, '36m': None} [verified_source_rate_pending]
+  IRP: {'3m': None, '6m': None, '12m': 3.7, '24m': 3.6, '36m': None} [verified_disclosure_merged]
+========================================================================
