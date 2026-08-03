@@ -1,0 +1,52 @@
+PS C:\SBRateBot_V5> py crawler\koreainvest_rate_probe_v3.py
+====================================================================================================
+SBRateBot V5 한국투자저축은행 Browser Network Probe v3
+====================================================================================================
+[DRIVER] Microsoft Edge 시도
+
+====================================================================================================
+[ISA] https://sb.koreainvestment.com/?PRD-PDS001-10#
+====================================================================================================
+[WAIT] +3s
+[WAIT] +5s
+[WAIT] +7s
+
+[FATAL ERROR]
+InvalidArgumentException()
+Traceback (most recent call last):
+  File "C:\SBRateBot_V5\crawler\koreainvest_rate_probe_v3.py", line 541, in <module>
+    main()
+    ~~~~^^
+  File "C:\SBRateBot_V5\crawler\koreainvest_rate_probe_v3.py", line 491, in main
+    capture_target(driver, kind, url)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\SBRateBot_V5\crawler\koreainvest_rate_probe_v3.py", line 318, in capture_target
+    perf = driver.get_log("performance")
+  File "C:\Users\201129\AppData\Local\Programs\Python\Python313\Lib\site-packages\selenium\webdriver\chromium\webdriver.py", line 173, in get_log
+    return self.execute(Command.GET_LOG, {"type": log_type})["value"]
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\201129\AppData\Local\Programs\Python\Python313\Lib\site-packages\selenium\webdriver\remote\webdriver.py", line 492, in execute
+    self.error_handler.check_response(response)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\201129\AppData\Local\Programs\Python\Python313\Lib\site-packages\selenium\webdriver\remote\errorhandler.py", line 232, in check_response
+    raise exception_class(message, screen, stacktrace)
+selenium.common.exceptions.InvalidArgumentException: Message: invalid argument: log type 'performance' not found
+  (Session info: MicrosoftEdge=151.0.4129.59)
+Stacktrace:
+        msedgedriver!GetHandleVerifier [0x7ff73aae0375+e3f5]
+        msedgedriver!GetHandleVerifier [0x7ff73aae03d4+e454]
+        msedgedriver!GetHandleVerifier [0x7ff73b19d3e2+6cb462]
+        msedgedriver!(No symbol) [0x7ff73a512f31]
+        msedgedriver!(No symbol) [0x7ff73a4d5acc]
+        msedgedriver!(No symbol) [0x7ff73a4d4d26]
+        msedgedriver!(No symbol) [0x7ff73a4d58f3]
+        msedgedriver!(No symbol) [0x7ff73a730eeb]
+        msedgedriver!(No symbol) [0x7ff73a72d304]
+        msedgedriver!GetHandleVerifier [0x7ff73ab0d2c5+3b345]
+        msedgedriver!GetHandleVerifier [0x7ff73aafbe41+29ec1]
+        msedgedriver!GetHandleVerifier [0x7ff73ab04786+32806]
+        msedgedriver!GetHandleVerifier [0x7ff73aae7d34+15db4]
+        msedgedriver!GetHandleVerifier [0x7ff73aae7e55+15ed5]
+        msedgedriver!GetHandleVerifier [0x7ff73aad43c3+2443]
+        KERNEL32!BaseThreadInitThunk [0x7fff92c17374+14]
+        ntdll!RtlUserThreadStart [0x7fff936bcc91+21]
