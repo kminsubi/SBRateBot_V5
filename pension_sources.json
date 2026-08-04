@@ -1,0 +1,95 @@
+{
+  "우리금융": {
+    "homepage": "http://www.woorisavingsbank.com/",
+    "isa_url": "https://woorisavingsbank.com:443/product/deposite/list.do",
+    "irp_url": "https://woorisavingsbank.com:443/product/deposite/list.do",
+    "isa_status": "discovered",
+    "irp_status": "discovered",
+    "isa_score": 67,
+    "irp_score": 78
+  },
+  "KB": {
+    "homepage": "http://www.kbsavings.com/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "신한": {
+    "homepage": "http://www.shinhansavings.com/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "하나": {
+    "homepage": "http://www.hanasavings.com/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "SBI": {
+    "homepage": "http://www.sbisb.co.kr/",
+    "isa_url": "https://www.sbisb.co.kr/mai0020100.act",
+    "irp_url": "https://www.sbisb.co.kr/mai0020100.act",
+    "isa_status": "discovered",
+    "irp_status": "discovered",
+    "isa_score": 25,
+    "irp_score": 31
+  },
+  "OK": {
+    "homepage": "http://www.oksavingsbank.com/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "한국투자": {
+    "homepage": "https://sb.koreainvestment.com/",
+    "isa_url": "https://sb.koreainvestment.com/?PRD-PDS001-10#",
+    "isa_status": "verified",
+    "irp_url": "https://sb.koreainvestment.com/?PRD-PDS001-11#",
+    "irp_status": "verified",
+    "collector": "koreainvest_websquare_selenium",
+    "browser": "Edge",
+    "updated_at": "2026-08-03 17:16:36"
+  },
+  "웰컴": {
+    "homepage": "http://www.welcomebank.co.kr",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "애큐온": {
+    "homepage": "http://www.acuonsb.co.kr",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "다올": {
+    "homepage": "https://www.daolsb.com",
+    "isa_url": "https://www.daolsb.com/deposit/goods.do?gds_cd=DA104&gds_clss_cd=DA",
+    "irp_url": "https://www.daolsb.com/deposit/goods.do?gds_cd=DA106",
+    "isa_status": "discovered",
+    "irp_status": "discovered",
+    "isa_score": 90,
+    "irp_score": 92
+  },
+  "DB": {
+    "homepage": "http://www.idbsb.com/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  },
+  "JT친애": {
+    "homepage": "https://www.jtchinae-bank.co.kr/",
+    "isa_url": null,
+    "irp_url": null,
+    "isa_status": null,
+    "irp_status": null
+  }
+}
