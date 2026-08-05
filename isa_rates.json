@@ -1,0 +1,257 @@
+[
+  {
+    "bank": "우리금융",
+    "category": "ISA",
+    "product": "ISA 정기예금",
+    "rates": {
+      "3m": 2.4,
+      "6m": 4.21,
+      "12m": 4.21,
+      "24m": 3.3,
+      "36m": 3.0
+    },
+    "status": "verified_official",
+    "source_url": "https://www.woorisavingsbank.com/deposite-interest/view.do",
+    "updated_at": "2026-08-05 12:18:07",
+    "note": "우리금융저축은행 공식 ISA 금리공시 기준값",
+    "disclosure_date": "2026-07-31",
+    "collected_at": "2026-08-05 12:18:07",
+    "disclosure_date_source": "woori_official_page",
+    "disclosure_date_url": "https://www.woorisavingsbank.com/deposite-interest/view.do"
+  },
+  {
+    "bank": "KB",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": 2.0,
+      "6m": 2.2,
+      "12m": 3.7,
+      "24m": 2.3,
+      "36m": 2.3
+    },
+    "status": "verified_official",
+    "source_url": "https://www.kbsavings.com/websquare/engine/callJsonService.jsp?serviceID=S_CommonItemService_getItemInfo",
+    "updated_at": "2026-08-05 12:18:15",
+    "note": "KB저축은행 공식 WebSquare 상품정보 API. ITEM_CODE=IB13(ISA정기예금)의 이율안내 표에서 기간별 적용이율만 수집. 복리수익률/중도해지이율 제외. API payload#2 사용.",
+    "disclosure_date": "2026-07-23",
+    "collected_at": "2026-08-05 12:18:15",
+    "disclosure_date_source": "kb_rate_table_sejeon_basis",
+    "disclosure_date_url": "https://www.kbsavings.com/websquare/engine/callJsonService.jsp?serviceID=S_CommonItemService_getItemInfo"
+  },
+  {
+    "bank": "신한",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": 1.9,
+      "6m": 2.4,
+      "12m": 3.65,
+      "24m": 3.0,
+      "36m": null
+    },
+    "status": "verified_official",
+    "source_url": "https://www.shinhansavings.com/api/PD0080/selectSavPd.json",
+    "updated_at": "2026-08-05 12:18:16",
+    "note": "신한저축은행 공식 ISA정기예금 API. dscr10220.LIST의 CLASS_CD=24014, FM_TERM별 APLY_RATE 약정이율 사용. 공식 가입기간 3/6/12/24개월, 36개월 미제공.",
+    "disclosure_date": "2026-08-05",
+    "collected_at": "2026-08-05 12:18:16",
+    "disclosure_date_source": "shinhan_rate_guide_current_basis",
+    "disclosure_date_url": "https://www.shinhansavings.com/api/PD0080/selectSavPd.json"
+  },
+  {
+    "bank": "하나",
+    "category": "ISA",
+    "product": "ISA 정기예금",
+    "rates": {
+      "3m": 1.1,
+      "6m": 3.1,
+      "12m": 3.68,
+      "24m": 2.9,
+      "36m": 2.8
+    },
+    "status": "verified_official",
+    "source_url": "https://www.hanasavings.com/YPR/YPR0103",
+    "updated_at": "2026-08-05 12:18:17",
+    "note": "하나저축은행 공식 ISA 정기예금 상세페이지 적용금리",
+    "disclosure_date": "2026-07-16",
+    "collected_at": "2026-08-05 12:18:17",
+    "disclosure_date_source": "hana_rate_table_current_basis",
+    "disclosure_date_url": "https://www.hanasavings.com/YPR/YPR0103"
+  },
+  {
+    "bank": "SBI",
+    "category": "ISA",
+    "product": "ISA",
+    "rates": {
+      "3m": null,
+      "6m": null,
+      "12m": null,
+      "24m": null,
+      "36m": null
+    },
+    "status": "verified_source_rate_pending",
+    "source_url": "https://www.sbisb.co.kr/gds0010100.act",
+    "updated_at": "2026-08-05 12:18:20",
+    "note": "공식 상품공시 화면에 ISA 카테고리 존재 확인. 상세 금리 값은 현재 공개 HTML에서 확인되지 않아 None 유지.",
+    "disclosure_date": null,
+    "collected_at": "2026-08-05 12:18:20",
+    "disclosure_date_source": "not_found"
+  },
+  {
+    "bank": "OK",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": 3.1,
+      "6m": 3.5,
+      "12m": 4.0,
+      "24m": 3.5,
+      "36m": 3.1
+    },
+    "status": "verified_official",
+    "source_url": "https://www.oksavingsbank.com/#/gdsDepsMngmDtl?depsGdsSqno=1261&pageNo=2&menuCd=00365&mngmTr=00000&inrtTp=00000&etryMthd=00000&acmlMthd=00000&entrObjc=00000&frdmEtryMthd=00000",
+    "updated_at": "2026-08-05 12:18:23",
+    "effective_date": "2026-08-03",
+    "depsGdsSqno": "1261",
+    "note": "OK저축은행 공식 홈페이지 상품정보 API 자동수집. ISA / depsGdsSqno=1261 / 시행일=2026-08-03",
+    "disclosure_date": "2026-08-03",
+    "collected_at": "2026-08-05 12:18:23",
+    "disclosure_date_source": "existing_collector"
+  },
+  {
+    "bank": "한국투자",
+    "category": "ISA",
+    "product": null,
+    "rates": {
+      "3m": null,
+      "6m": null,
+      "12m": null,
+      "24m": null,
+      "36m": null
+    },
+    "status": "fetch_or_parse_error",
+    "source_url": null,
+    "updated_at": "2026-08-05 12:20:22",
+    "error": "Message: timeout: Timed out receiving message from renderer: 28.381\n  (Session info: MicrosoftEdge=151.0.4129.59)\nStacktrace:\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f10375+e3f5]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f103d4+e454]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c85cd3e2+6cb462]\n\tmsedgedriver!(No symbol) [0x7ff6c78b7ded]\n\tmsedgedriver!(No symbol) [0x7ff6c78b7c45]\n\tmsedgedriver!(No symbol) [0x7ff6c78b5df1]\n\tmsedgedriver!(No symbol) [0x7ff6c78b663f]\n\tmsedgedriver!(No symbol) [0x7ff6c78c0c50]\n\tmsedgedriver!(No symbol) [0x7ff6c78d1cdd]\n\tmsedgedriver!(No symbol) [0x7ff6c78d7b3a]\n\tmsedgedriver!(No symbol) [0x7ff6c78b6fd8]\n\tmsedgedriver!(No symbol) [0x7ff6c78b6cee]\n\tmsedgedriver!(No symbol) [0x7ff6c78d1a84]\n\tmsedgedriver!(No symbol) [0x7ff6c794b802]\n\tmsedgedriver!(No symbol) [0x7ff6c7905acc]\n\tmsedgedriver!(No symbol) [0x7ff6c7904d26]\n\tmsedgedriver!(No symbol) [0x7ff6c79058f3]\n\tmsedgedriver!(No symbol) [0x7ff6c7b60eeb]\n\tmsedgedriver!(No symbol) [0x7ff6c7b5d304]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f3d2c5+3b345]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f2be41+29ec1]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f34786+32806]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f17d34+15db4]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f17e55+15ed5]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f043c3+2443]\n\tKERNEL32!BaseThreadInitThunk [0x7ffa59657374+14]\n\tntdll!RtlUserThreadStart [0x7ffa5b2fcc91+21]\n",
+    "note": "한국투자 공식 WebSquare 수집 실패: Message: timeout: Timed out receiving message from renderer: 28.381\n  (Session info: MicrosoftEdge=151.0.4129.59)\nStacktrace:\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f10375+e3f5]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f103d4+e454]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c85cd3e2+6cb462]\n\tmsedgedriver!(No symbol) [0x7ff6c78b7ded]\n\tmsedgedriver!(No symbol) [0x7ff6c78b7c45]\n\tmsedgedriver!(No symbol) [0x7ff6c78b5df1]\n\tmsedgedriver!(No symbol) [0x7ff6c78b663f]\n\tmsedgedriver!(No symbol) [0x7ff6c78c0c50]\n\tmsedgedriver!(No symbol) [0x7ff6c78d1cdd]\n\tmsedgedriver!(No symbol) [0x7ff6c78d7b3a]\n\tmsedgedriver!(No symbol) [0x7ff6c78b6fd8]\n\tmsedgedriver!(No symbol) [0x7ff6c78b6cee]\n\tmsedgedriver!(No symbol) [0x7ff6c78d1a84]\n\tmsedgedriver!(No symbol) [0x7ff6c794b802]\n\tmsedgedriver!(No symbol) [0x7ff6c7905acc]\n\tmsedgedriver!(No symbol) [0x7ff6c7904d26]\n\tmsedgedriver!(No symbol) [0x7ff6c79058f3]\n\tmsedgedriver!(No symbol) [0x7ff6c7b60eeb]\n\tmsedgedriver!(No symbol) [0x7ff6c7b5d304]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f3d2c5+3b345]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f2be41+29ec1]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f34786+32806]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f17d34+15db4]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f17e55+15ed5]\n\tmsedgedriver!GetHandleVerifier [0x7ff6c7f043c3+2443]\n\tKERNEL32!BaseThreadInitThunk [0x7ffa59657374+14]\n\tntdll!RtlUserThreadStart [0x7ffa5b2fcc91+21]\n",
+    "disclosure_date": null,
+    "collected_at": "2026-08-05 12:20:22",
+    "disclosure_date_source": "not_found"
+  },
+  {
+    "bank": "웰컴",
+    "category": "ISA",
+    "product": null,
+    "rates": {
+      "3m": null,
+      "6m": null,
+      "12m": null,
+      "24m": null,
+      "36m": null
+    },
+    "status": "research_pending",
+    "source_url": null,
+    "updated_at": "2026-08-05 12:20:22",
+    "disclosure_date": null,
+    "collected_at": "2026-08-05 12:20:22",
+    "disclosure_date_source": "not_found"
+  },
+  {
+    "bank": "애큐온",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": 1.5,
+      "6m": 2.2,
+      "12m": 2.7,
+      "24m": 2.5,
+      "36m": 2.4
+    },
+    "status": "verified_official",
+    "source_url": "https://www.acuonsb.co.kr/sd_TUB_GD_INFO_T.jct",
+    "updated_at": "2026-08-05 12:20:22",
+    "note": "애큐온저축은행 공식 JEX 상품정보 API. GD_INFO_C=1201170, REC_001의 INT_TYPE=1 약정금리 중 COND_TRM별 CONT_APLY_INT 사용.",
+    "disclosure_date": "2025-11-01",
+    "collected_at": "2026-08-05 12:20:22",
+    "disclosure_date_source": "acuon_official_api:payload.CHNG_DATETIME",
+    "disclosure_date_url": "https://www.acuonsb.co.kr/sd_TUB_GD_INFO_T.jct"
+  },
+  {
+    "bank": "다올",
+    "category": "ISA",
+    "product": "ISA 정기예금",
+    "rates": {
+      "3m": 2.1,
+      "6m": 2.3,
+      "12m": 3.35,
+      "24m": 2.5,
+      "36m": 2.4
+    },
+    "status": "verified_official",
+    "source_url": "https://www.daolsb.com/deposit/goods.do?gds_cd=DA104&gds_clss_cd=DA",
+    "updated_at": "2026-08-05 12:20:23",
+    "note": "다올저축은행 공식 ISA 정기예금 약정이율, 최종금리변경일 2026-03-26",
+    "disclosure_date": "2026-03-26",
+    "collected_at": "2026-08-05 12:20:23",
+    "disclosure_date_source": "existing_collector"
+  },
+  {
+    "bank": "DB",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": 2.2,
+      "6m": 2.5,
+      "12m": 3.7,
+      "24m": 2.1,
+      "36m": null
+    },
+    "status": "verified_official",
+    "source_url": "https://www.idbsb.com/w2/itb/dps/inr/dpstInrstGuidance.xml",
+    "updated_at": "2026-08-05 12:20:26",
+    "effective_date": "2026-07-28",
+    "api_url": "https://www.idbsb.com/itb/dps/inr/selectDpstInrstGuidance.do",
+    "note": "DB저축은행 공식 홈페이지 ISA 금리안내 API 자동수집. 기준일=2026-07-28",
+    "disclosure_date": "2026-07-28",
+    "collected_at": "2026-08-05 12:20:26",
+    "disclosure_date_source": "existing_collector"
+  },
+  {
+    "bank": "JT친애",
+    "category": "ISA",
+    "product": null,
+    "rates": {
+      "3m": null,
+      "6m": null,
+      "12m": null,
+      "24m": null,
+      "36m": null
+    },
+    "status": "research_pending",
+    "source_url": null,
+    "updated_at": "2026-08-05 12:20:26",
+    "disclosure_date": null,
+    "collected_at": "2026-08-05 12:20:26",
+    "disclosure_date_source": "not_found"
+  },
+  {
+    "bank": "NH",
+    "category": "ISA",
+    "product": "ISA정기예금",
+    "rates": {
+      "3m": null,
+      "6m": null,
+      "12m": null,
+      "24m": null,
+      "36m": null
+    },
+    "status": "verified_source_rate_pending",
+    "source_url": "https://www.nhsavingsbank.co.kr/dpisPrd/view.do?prdCode=24302",
+    "updated_at": "2026-08-05 12:20:26",
+    "note": "공식 상세페이지에서 상품 존재 확인. 현재 HTML에서 적용금리 숫자가 비어 있어 금리는 None 유지.",
+    "disclosure_date": null,
+    "collected_at": "2026-08-05 12:20:26",
+    "disclosure_date_source": "not_found"
+  }
+]
