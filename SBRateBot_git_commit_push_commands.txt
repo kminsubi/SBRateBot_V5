@@ -1,0 +1,7 @@
+﻿cd C:\SBRateBot_V5
+
+git commit -m "Integrate ISA IRP collector v5.6 and dashboard API"
+
+git push origin main
+
+git status
