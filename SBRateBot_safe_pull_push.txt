@@ -1,43 +1,5 @@
-PS C:\SBRateBot_V5> git pull --rebase origin main
->> 
->> git push origin main
->> 
->> git status
-remote: Enumerating objects: 249, done.
-remote: Counting objects: 100% (112/112), done.
-remote: Compressing objects: 100% (85/85), done.
-remote: Total 249 (delta 74), reused 27 (delta 27), pack-reused 137 (from 3)
-Receiving objects: 100% (249/249), 528.28 KiB | 1.77 MiB/s, done.
-Resolving deltas: 100% (95/95), completed with 2 local objects.
-From https://github.com/kminsubi/SBRateBot_V5
- * branch            main       -> FETCH_HEAD
-   cdbfcb8..a0981d2  main       -> origin/main
-Enumerating objects: 676, done.
-Counting objects: 100% (676/676), done.
-Delta compression using up to 4 threads
-Compressing objects: 100% (347/347), done.
-Writing objects: 100% (676/676), done.
-Total 676 (delta 333), reused 661 (delta 320), pack-reused 0 (from 0)
-Successfully rebased and updated refs/heads/main.
-Enumerating objects: 15, done.
-Counting objects: 100% (15/15), done.
-Delta compression using up to 4 threads
-Compressing objects: 100% (7/7), done.
-Writing objects: 100% (8/8), 25.32 KiB | 2.53 MiB/s, done.
-Total 8 (delta 6), reused 2 (delta 1), pack-reused 0 (from 0)
-remote: Resolving deltas: 100% (6/6), completed with 5 local objects.
-To https://github.com/kminsubi/SBRateBot_V5.git
-   a0981d2..3d8344b  main -> main
-On branch main
-Your branch is up to date with 'origin/main'.
+http://127.0.0.1:5000/api/isa?period=12
 
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-        crawler/koreainvest.py
-        crawler/pension_rates_disclosure_v5_5.py
-        crawler/pension_rates_final_v5_6.py
-        crawler/welcome_isa_irp_probe_v2.py
-        data/sbi_isa_probe_v1.txt
-        data/welcome_isa_irp_probe_v2.txt
+http://127.0.0.1:5000/api/irp?period=12
 
-nothing added to commit but untracked files present (use "git add" to track)
+http://127.0.0.1:5000/api/pension?bank=우리금융&period=12
