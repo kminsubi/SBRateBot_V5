@@ -1,8 +1,0 @@
-﻿cd C:\SBRateBot_V5
-
-git add app.py
-git add crawler/pension_rates.py
-git add data/isa_rates.json
-git add data/irp_rates.json
-
-git status
