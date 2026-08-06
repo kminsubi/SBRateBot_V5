@@ -1,0 +1,7 @@
+﻿cd C:\SBRateBot_V5
+
+git pull --rebase origin main
+
+git push origin main
+
+git status
