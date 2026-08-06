@@ -1,7 +1,29 @@
-﻿cd C:\SBRateBot_V5
+PS C:\SBRateBot_V5> git commit -m "Integrate ISA IRP collector v5.6 and dashboard API"
+>> 
+>> git push origin main
+>> 
+>> git status
+[main b8f3a36] Integrate ISA IRP collector v5.6 and dashboard API
+ 4 files changed, 2572 insertions(+), 188 deletions(-)
+To https://github.com/kminsubi/SBRateBot_V5.git
+ ! [rejected]        main -> main (fetch first)
+error: failed to push some refs to 'https://github.com/kminsubi/SBRateBot_V5.git'
+hint: Updates were rejected because the remote contains work that you do not
+hint: have locally. This is usually caused by another repository pushing to
+hint: the same ref. If you want to integrate the remote changes, use
+hint: 'git pull' before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+On branch main
+Your branch is ahead of 'origin/main' by 1 commit.
+  (use "git push" to publish your local commits)
 
-git commit -m "Integrate ISA IRP collector v5.6 and dashboard API"
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        crawler/koreainvest.py
+        crawler/pension_rates_disclosure_v5_5.py
+        crawler/pension_rates_final_v5_6.py
+        crawler/welcome_isa_irp_probe_v2.py
+        data/sbi_isa_probe_v1.txt
+        data/welcome_isa_irp_probe_v2.txt
 
-git push origin main
-
-git status
+nothing added to commit but untracked files present (use "git add" to track)
