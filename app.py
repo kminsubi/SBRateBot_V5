@@ -58,6 +58,23 @@ PREVIOUS_DATA_FILE = os.path.join(
 
 
 # -------------------------------
+# ISA / 퇴직연금 데이터 파일 V5
+# -------------------------------
+
+ISA_DATA_FILE = os.path.join(
+    BASE_DIR,
+    "data",
+    "isa_rates.json"
+)
+
+IRP_DATA_FILE = os.path.join(
+    BASE_DIR,
+    "data",
+    "irp_rates.json"
+)
+
+
+# -------------------------------
 # 기간 설정
 # -------------------------------
 
@@ -168,6 +185,102 @@ def load_previous_rates():
 
     except Exception:
         return []
+
+
+# -------------------------------
+# ISA / 퇴직연금 데이터 로드 V5
+# -------------------------------
+
+def load_pension_rate_file(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if isinstance(data, list):
+            return [x for x in data if isinstance(x, dict)]
+
+        if isinstance(data, dict):
+            for key in ["data", "items", "rates", "REC"]:
+                value = data.get(key)
+                if isinstance(value, list):
+                    return [x for x in value if isinstance(x, dict)]
+
+        return []
+
+    except Exception as e:
+        print("ISA/IRP DATA LOAD ERROR:", file_path, e)
+        return []
+
+
+def normalize_pension_bank_name(value):
+    name = str(value or "").strip()
+
+    if not name:
+        return ""
+
+    if "저축은행" in name:
+        return name
+
+    return name + "저축은행"
+
+
+def pension_rate_value(row, month):
+    rates = row.get("rates", {})
+
+    if not isinstance(rates, dict):
+        return None
+
+    value = rates.get(f"{month}m")
+
+    if value in [None, "", "-"]:
+        return None
+
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def build_pension_products(file_path, category):
+    rows = load_pension_rate_file(file_path)
+    result = []
+
+    for row in rows:
+        bank = normalize_pension_bank_name(
+            row.get("bank")
+            or row.get("bank_name")
+            or ""
+        )
+
+        product = str(
+            row.get("product")
+            or row.get("product_name")
+            or ""
+        ).strip()
+
+        if not bank:
+            continue
+
+        rates = {}
+
+        for month in [3, 6, 12, 24, 36]:
+            rates[f"{month}m"] = pension_rate_value(row, month)
+
+        result.append({
+            "category": category,
+            "bank": bank,
+            "product": product,
+            "rates": rates,
+            "disclosure_date": row.get("disclosure_date"),
+            "disclosure_date_source": row.get("disclosure_date_source"),
+            "source_url": row.get("source_url"),
+            "status": row.get("status"),
+            "note": row.get("note"),
+            "rate_month": row.get("rate_month"),
+            "rate_type": row.get("rate_type")
+        })
+
+    return result
 
 
 # -------------------------------
@@ -9411,6 +9524,128 @@ def ai_search():
 
 
 
+
+
+# ===================================
+# ISA / 퇴직연금 API V5
+# 기존 정기예금 API와 분리
+# ===================================
+
+def pension_items_with_period(items, period):
+    if period not in ["3", "6", "12", "24", "36"]:
+        return items
+
+    key = period + "m"
+
+    for item in items:
+        item["period"] = period + "개월"
+        item["rate"] = item.get("rates", {}).get(key)
+
+    items.sort(
+        key=lambda x: (
+            x.get("rate") is not None,
+            x.get("rate") or 0
+        ),
+        reverse=True
+    )
+
+    return items
+
+
+@app.route("/api/isa")
+def api_isa():
+    period = str(request.args.get("period", "")).strip()
+
+    items = build_pension_products(
+        ISA_DATA_FILE,
+        "ISA"
+    )
+
+    items = pension_items_with_period(
+        items,
+        period
+    )
+
+    return jsonify({
+        "category": "ISA",
+        "count": len(items),
+        "items": items
+    })
+
+
+@app.route("/api/irp")
+def api_irp():
+    period = str(request.args.get("period", "")).strip()
+
+    items = build_pension_products(
+        IRP_DATA_FILE,
+        "퇴직연금"
+    )
+
+    items = pension_items_with_period(
+        items,
+        period
+    )
+
+    return jsonify({
+        "category": "퇴직연금",
+        "count": len(items),
+        "items": items
+    })
+
+
+@app.route("/api/pension")
+def api_pension():
+    pension_type = str(
+        request.args.get("type", "all")
+    ).strip().lower()
+
+    period = str(
+        request.args.get("period", "")
+    ).strip()
+
+    bank_query = str(
+        request.args.get("bank", "")
+    ).strip()
+
+    items = []
+
+    if pension_type in ["all", "isa"]:
+        items.extend(
+            build_pension_products(
+                ISA_DATA_FILE,
+                "ISA"
+            )
+        )
+
+    if pension_type in ["all", "irp", "퇴직연금"]:
+        items.extend(
+            build_pension_products(
+                IRP_DATA_FILE,
+                "퇴직연금"
+            )
+        )
+
+    if bank_query:
+        target = normalize(bank_query)
+
+        items = [
+            item
+            for item in items
+            if target in normalize(item.get("bank", ""))
+        ]
+
+    items = pension_items_with_period(
+        items,
+        period
+    )
+
+    return jsonify({
+        "type": pension_type,
+        "period": period + "개월" if period else None,
+        "count": len(items),
+        "items": items
+    })
 
 
 # -------------------------------

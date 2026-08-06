@@ -1,6 +1,6 @@
 import json,re
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests,urllib3
 from bs4 import BeautifulSoup
 
@@ -1454,7 +1454,1063 @@ def ok_irp(bank,kind,cfg):
     return ok_official(bank,kind,cfg)
 
 
-P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"acuon_isa":acuon_isa,"acuon_irp":acuon_irp,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp,"ok_isa":ok_isa,"ok_irp":ok_irp}
+# ============================================================
+# 한국투자저축은행 공식 ISA / IRP Collector Adapter
+# - 기존 성공 통합본 로직은 건드리지 않음
+# - 한국투자만 Selenium + WebSquare 렌더링 DOM으로 수집
+# ============================================================
+
+_KOREAINVEST_CACHE=None
+
+KOREAINVEST_TARGETS={
+    "ISA":{
+        "url":"https://sb.koreainvestment.com/?PRD-PDS001-10#",
+        "expected_title":"ISA정기예금",
+    },
+    "IRP":{
+        "url":"https://sb.koreainvestment.com/?PRD-PDS001-11#",
+        "expected_title":"퇴직연금정기예금",
+    },
+}
+
+
+def koreainvest_clean(value):
+    return re.sub(
+        r"\s+",
+        " ",
+        str(value or "").replace("\xa0"," ")
+    ).strip()
+
+
+def koreainvest_rate(value):
+    m=re.search(
+        r"(\d+(?:\.\d+)?)",
+        koreainvest_clean(value)
+    )
+
+    if not m:
+        return None
+
+    try:
+        v=float(m.group(1))
+    except Exception:
+        return None
+
+    return v if 0 <= v <= 10 else None
+
+
+def koreainvest_period(value):
+    m=re.search(
+        r"(\d+)\s*개월",
+        koreainvest_clean(value)
+    )
+
+    if not m:
+        return None
+
+    try:
+        return int(m.group(1))
+    except Exception:
+        return None
+
+
+def koreainvest_reference_date(value):
+    m=re.search(
+        r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일",
+        koreainvest_clean(value)
+    )
+
+    if not m:
+        return None
+
+    y,mn,d=map(int,m.groups())
+
+    return f"{y:04d}-{mn:02d}-{d:02d}"
+
+
+def koreainvest_month_key(value):
+    m=re.search(
+        r"(\d{4})\D+(\d{1,2})",
+        koreainvest_clean(value)
+    )
+
+    if not m:
+        return (0,0)
+
+    return (
+        int(m.group(1)),
+        int(m.group(2)),
+    )
+
+
+
+def koreainvest_create_driver(prefer="Edge"):
+    """
+    v5.5 한국투자 Selenium 안정화
+
+    - page_load_strategy='eager'로 전체 리소스 로딩 완료를 기다리지 않음
+    - 이미지/알림/백그라운드 기능 최소화
+    - Edge 우선, 실패 시 Chrome fallback
+    """
+    from selenium import webdriver
+
+    browsers=[
+        prefer,
+        "Chrome" if prefer=="Edge" else "Edge",
+    ]
+
+    errors=[]
+
+    for browser in browsers:
+        try:
+            if browser=="Edge":
+                from selenium.webdriver.edge.options import Options as EdgeOptions
+
+                options=EdgeOptions()
+                options.page_load_strategy="eager"
+                options.add_argument("--headless=new")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--window-size=1600,1200")
+                options.add_argument("--ignore-certificate-errors")
+                options.add_argument("--disable-popup-blocking")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-background-networking")
+                options.add_argument("--disable-background-timer-throttling")
+                options.add_argument("--disable-renderer-backgrounding")
+                options.add_argument("--disable-features=Translate,MediaRouter")
+                options.add_argument("--no-first-run")
+                options.add_argument("--no-default-browser-check")
+
+                prefs={
+                    "profile.default_content_setting_values.images":2,
+                    "profile.default_content_setting_values.notifications":2,
+                }
+
+                try:
+                    options.add_experimental_option(
+                        "prefs",
+                        prefs
+                    )
+                except Exception:
+                    pass
+
+                driver=webdriver.Edge(
+                    options=options
+                )
+
+            else:
+                from selenium.webdriver.chrome.options import Options as ChromeOptions
+
+                options=ChromeOptions()
+                options.page_load_strategy="eager"
+                options.add_argument("--headless=new")
+                options.add_argument("--disable-gpu")
+                options.add_argument("--window-size=1600,1200")
+                options.add_argument("--ignore-certificate-errors")
+                options.add_argument("--disable-popup-blocking")
+                options.add_argument("--disable-notifications")
+                options.add_argument("--disable-extensions")
+                options.add_argument("--disable-background-networking")
+                options.add_argument("--disable-background-timer-throttling")
+                options.add_argument("--disable-renderer-backgrounding")
+                options.add_argument("--disable-features=Translate,MediaRouter")
+                options.add_argument("--no-first-run")
+                options.add_argument("--no-default-browser-check")
+                options.add_experimental_option(
+                    "prefs",
+                    {
+                        "profile.default_content_setting_values.images":2,
+                        "profile.default_content_setting_values.notifications":2,
+                    }
+                )
+
+                driver=webdriver.Chrome(
+                    options=options
+                )
+
+            driver.set_page_load_timeout(
+                18
+            )
+            driver.set_script_timeout(
+                15
+            )
+
+            return driver,browser
+
+        except Exception as e:
+            errors.append(
+                f"{browser}={e}"
+            )
+
+    raise RuntimeError(
+        "한국투자 Edge/Chrome WebDriver 실행 실패 | "
+        + " | ".join(errors)
+    )
+
+
+
+def koreainvest_wait(driver,expected_title,timeout=35):
+    """
+    WebSquare 핵심 DOM이 실제로 생성될 때까지 대기.
+    document.readyState 완료 여부는 요구하지 않는다.
+    """
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+
+    wait=WebDriverWait(
+        driver,
+        timeout,
+        poll_frequency=0.5
+    )
+
+    wait.until(
+        EC.presence_of_element_located(
+            (
+                By.ID,
+                "mf_wfm_contents_intrGridView"
+            )
+        )
+    )
+
+    # 핵심 영역에 텍스트가 실제로 채워질 때까지 대기
+    wait.until(
+        lambda d:
+            len(
+                koreainvest_clean(
+                    d.find_element(
+                        By.ID,
+                        "mf_wfm_contents_intrGridView"
+                    ).text
+                )
+            ) > 50
+    )
+
+    # 제목 검증은 보조 조건. 제목이 늦게 바뀌더라도 DOM이 있으면 진행.
+    try:
+        WebDriverWait(
+            driver,
+            5,
+            poll_frequency=0.5
+        ).until(
+            lambda d:
+                expected_title in koreainvest_clean(d.title)
+                or expected_title in koreainvest_clean(
+                    d.find_element(
+                        By.TAG_NAME,
+                        "body"
+                    ).text
+                )
+        )
+    except Exception:
+        pass
+
+
+def koreainvest_section(driver):
+    return driver.execute_script(
+        r"""
+        const root=document.getElementById(
+            "mf_wfm_contents_intrGridView"
+        );
+
+        if(!root){
+            return null;
+        }
+
+        return {
+            text:(root.innerText || "")
+                .replace(/\s+/g," ")
+                .trim(),
+
+            tables:Array.from(
+                root.querySelectorAll("table")
+            ).map(
+                (table,tableIndex)=>({
+                    tableIndex,
+                    rows:Array.from(
+                        table.querySelectorAll("tr")
+                    ).map(
+                        row=>Array.from(
+                            row.querySelectorAll("th, td")
+                        ).map(
+                            cell=>({
+                                text:(cell.innerText || "")
+                                    .replace(/\s+/g," ")
+                                    .trim(),
+                                tag:cell.tagName,
+                                rowspan:cell.getAttribute("rowspan") || "1",
+                                colspan:cell.getAttribute("colspan") || "1"
+                            })
+                        )
+                    )
+                })
+            )
+        };
+        """
+    )
+
+
+def koreainvest_parse_isa(bank,cfg,section):
+    rates={f"{p}m":None for p in ISA_PERIODS}
+
+    if not section:
+        o=blank(bank,"isa",cfg,"rate_not_found")
+        o["note"]="한국투자 ISA WebSquare 금리영역 미확인"
+        return o
+
+    for table in section.get("tables",[]):
+        found=0
+
+        for row in table.get("rows",[]):
+            texts=[
+                koreainvest_clean(cell.get("text"))
+                for cell in row
+            ]
+
+            if len(texts) < 2:
+                continue
+
+            period=koreainvest_period(texts[0])
+
+            if period not in ISA_PERIODS:
+                continue
+
+            rate=koreainvest_rate(texts[1])
+
+            if rate is None:
+                continue
+
+            rates[f"{period}m"]=rate
+            found+=1
+
+        if found >= 3:
+            break
+
+    found=sum(v is not None for v in rates.values())
+
+    status=(
+        "verified_official"
+        if found==5
+        else "verified_official_partial"
+        if found
+        else "rate_not_found"
+    )
+
+    o=blank(bank,"isa",cfg,status)
+    o["product"]="ISA정기예금"
+    o["rates"]=rates
+    o["source_url"]=KOREAINVEST_TARGETS["ISA"]["url"]
+    o["reference_date"]=koreainvest_reference_date(
+        section.get("text","")
+    )
+    o["collector"]="koreainvest_websquare_selenium"
+    o["note"]=(
+        "한국투자저축은행 공식 WebSquare ISA정기예금 금리안내 표 자동수집."
+    )
+
+    return o
+
+
+def koreainvest_parse_irp(bank,cfg,section):
+    rates={f"{p}m":None for p in IRP_PERIODS}
+    db_rates={f"{p}m":None for p in IRP_PERIODS}
+    rate_months={}
+
+    if not section:
+        o=blank(bank,"irp",cfg,"rate_not_found")
+        o["note"]="한국투자 IRP WebSquare 금리영역 미확인"
+        return o
+
+    target_rows=[]
+
+    for table in section.get("tables",[]):
+        rows=table.get("rows",[])
+
+        joined=" ".join(
+            koreainvest_clean(cell.get("text"))
+            for row in rows
+            for cell in row
+        )
+
+        if "DC/IRP형" in joined and "DB형" in joined:
+            target_rows=rows
+            break
+
+    if not target_rows:
+        o=blank(bank,"irp",cfg,"rate_not_found")
+        o["note"]="한국투자 IRP DC/IRP형/DB형 금리표 미확인"
+        return o
+
+    period_rows={}
+    current_period=None
+
+    for row in target_rows:
+        cells=[
+            cell
+            for cell in row
+            if cell.get("tag")=="TD"
+        ]
+
+        texts=[
+            koreainvest_clean(cell.get("text"))
+            for cell in cells
+        ]
+
+        if not texts:
+            continue
+
+        first_period=koreainvest_period(texts[0])
+
+        if first_period in IRP_PERIODS:
+            current_period=first_period
+
+            if len(texts) < 4:
+                continue
+
+            rate_month=texts[1]
+            dc_irp=koreainvest_rate(texts[2])
+            db=koreainvest_rate(texts[3])
+
+        else:
+            if current_period is None or len(texts) < 3:
+                continue
+
+            rate_month=texts[0]
+            dc_irp=koreainvest_rate(texts[1])
+            db=koreainvest_rate(texts[2])
+
+        if dc_irp is None and db is None:
+            continue
+
+        period_rows.setdefault(
+            current_period,
+            []
+        ).append({
+            "rate_month":rate_month,
+            "dc_irp_rate":dc_irp,
+            "db_rate":db,
+        })
+
+    for period in IRP_PERIODS:
+        rows=period_rows.get(period,[])
+
+        if not rows:
+            continue
+
+        latest=max(
+            rows,
+            key=lambda x:koreainvest_month_key(
+                x.get("rate_month")
+            )
+        )
+
+        rates[f"{period}m"]=latest.get("dc_irp_rate")
+        db_rates[f"{period}m"]=latest.get("db_rate")
+        rate_months[f"{period}m"]=latest.get("rate_month")
+
+    found=sum(v is not None for v in rates.values())
+
+    status=(
+        "verified_official"
+        if found==5
+        else "verified_official_partial"
+        if found
+        else "rate_not_found"
+    )
+
+    o=blank(bank,"irp",cfg,status)
+    o["product"]="퇴직연금정기예금"
+    o["rates"]=rates
+    o["db_rates"]=db_rates
+    o["rate_months"]=rate_months
+    o["source_url"]=KOREAINVEST_TARGETS["IRP"]["url"]
+    o["reference_date"]=koreainvest_reference_date(
+        section.get("text","")
+    )
+    o["collector"]="koreainvest_websquare_selenium"
+    o["note"]=(
+        "한국투자저축은행 공식 WebSquare 퇴직연금정기예금 금리표 자동수집. "
+        "통합 IRP 대표금리는 DC/IRP형을 사용하고 DB형은 db_rates에 별도 보존."
+    )
+
+    return o
+
+
+
+def _koreainvest_open_target(driver,target):
+    """
+    renderer timeout이 나더라도 이미 DOM이 생성된 경우 계속 진행.
+    """
+    from selenium.common.exceptions import TimeoutException
+
+    try:
+        driver.get(
+            target["url"]
+        )
+    except TimeoutException:
+        # Edge가 외부 리소스를 끝까지 기다리다 timeout 나는 경우가 있음.
+        # 실제 WebSquare DOM이 떠 있으면 아래 wait에서 정상 진행 가능.
+        try:
+            driver.execute_script(
+                "window.stop();"
+            )
+        except Exception:
+            pass
+
+    koreainvest_wait(
+        driver,
+        target["expected_title"],
+        timeout=35
+    )
+
+    section=koreainvest_section(
+        driver
+    )
+
+    if not section:
+        raise RuntimeError(
+            "한국투자 WebSquare 금리 DOM 추출 실패"
+        )
+
+    return section
+
+
+def _collect_koreainvest_one(bank,cfg,kind,target,max_attempts=2):
+    """
+    ISA / IRP 각각 독립 실행.
+    한쪽 timeout이 다른 한쪽 결과까지 지우지 않도록 분리.
+    """
+    last_error=None
+
+    for attempt in range(
+        1,
+        max_attempts+1
+    ):
+        driver=None
+
+        # 1차 Edge, 재시도 시 Chrome 우선
+        prefer=(
+            "Edge"
+            if attempt==1
+            else "Chrome"
+        )
+
+        try:
+            driver,browser=koreainvest_create_driver(
+                prefer=prefer
+            )
+
+            section=_koreainvest_open_target(
+                driver,
+                target
+            )
+
+            if kind=="ISA":
+                item=koreainvest_parse_isa(
+                    bank,
+                    cfg["isa"],
+                    section
+                )
+            else:
+                item=koreainvest_parse_irp(
+                    bank,
+                    cfg["irp"],
+                    section
+                )
+
+            item["browser"]=browser
+            item["selenium_attempt"]=attempt
+
+            return item
+
+        except Exception as e:
+            last_error=e
+
+        finally:
+            if driver is not None:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+
+    target_cfg=(
+        cfg["isa"]
+        if kind=="ISA"
+        else cfg["irp"]
+    )
+
+    item=blank(
+        bank,
+        kind.lower(),
+        target_cfg,
+        "fetch_or_parse_error"
+    )
+
+    item["error"]=str(
+        last_error
+    )
+    item["note"]=(
+        f"한국투자 공식 WebSquare {kind} 수집 실패 "
+        f"(v5.5 재시도 {max_attempts}회): {last_error}"
+    )
+    item["source_url"]=target.get(
+        "url"
+    )
+
+    return item
+
+
+def collect_koreainvest_official(bank,cfg):
+    """
+    v5.5:
+    - ISA와 IRP를 독립 수집
+    - 각 대상 최대 2회 재시도
+    - Edge renderer timeout 발생 시 window.stop 후 DOM 수집 시도
+    - 2차는 Chrome 우선 fallback
+    """
+    results={}
+
+    for kind,target in KOREAINVEST_TARGETS.items():
+        results[kind]=_collect_koreainvest_one(
+            bank,
+            cfg,
+            kind,
+            target,
+            max_attempts=2
+        )
+
+    browsers=[]
+
+    for kind in ("ISA","IRP"):
+        browser=(
+            results.get(kind,{})
+            .get("browser")
+        )
+
+        if browser:
+            browsers.append(
+                f"{kind}:{browser}"
+            )
+
+    results["browser"]=" / ".join(
+        browsers
+    ) or None
+
+    return results
+
+
+def get_koreainvest_official(bank,cfg):
+    global _KOREAINVEST_CACHE
+
+    if _KOREAINVEST_CACHE is None:
+        _KOREAINVEST_CACHE=collect_koreainvest_official(
+            bank,
+            cfg
+        )
+
+    return _KOREAINVEST_CACHE
+
+
+def koreainvest_isa(bank,kind,cfg,bank_cfg=None):
+    result=get_koreainvest_official(
+        bank,
+        bank_cfg
+    )
+
+    item=result.get("ISA")
+
+    if isinstance(item,dict):
+        return item
+
+    return blank(
+        bank,
+        kind,
+        cfg,
+        "fetch_or_parse_error"
+    )
+
+
+def koreainvest_irp(bank,kind,cfg,bank_cfg=None):
+    result=get_koreainvest_official(
+        bank,
+        bank_cfg
+    )
+
+    item=result.get("IRP")
+
+    if isinstance(item,dict):
+        return item
+
+    return blank(
+        bank,
+        kind,
+        cfg,
+        "fetch_or_parse_error"
+    )
+
+
+
+
+# ============================================================
+# 웰컴저축은행 공식 ISA / IRP Collector
+# v5.6
+#
+# 공식 상품 상세페이지:
+# - ISA : prdCd=1120255020
+# - IRP : prdCd=1120255021
+#
+# 원칙:
+# - ISA는 약정금리(연이율)만 수집
+# - 연수익률/중도해지이율은 제외
+# - IRP는 최신 월의 DC/IRP형 12개월 약정금리만 사용
+# - DB형 금리는 IRP 대표금리로 사용하지 않음
+# - 금리안내의 [YYYY.MM.DD] 기준일을 disclosure_date로 저장
+# ============================================================
+
+WELCOME_ISA_URL = (
+    "https://www.welcomebank.co.kr/ib20/mnu/IBNFPMDSP001"
+    "?ib20_wc=IBNFPMDSP001_00:IBNFPMCMN001_00"
+    "&prdCd=1120255020&sysDsCd=01"
+)
+
+WELCOME_IRP_URL = (
+    "https://www.welcomebank.co.kr/ib20/mnu/IBNFPMDSP001"
+    "?ib20_wc=IBNFPMDSP001_00:IBNFPMCMN001_00"
+    "&prdCd=1120255021&sysDsCd=01"
+)
+
+
+def welcome_page_text(url):
+    html, final_url = fetch(url)
+
+    soup = BeautifulSoup(
+        html,
+        "html.parser"
+    )
+
+    text_value = " ".join(
+        soup.stripped_strings
+    )
+
+    return text_value, final_url
+
+
+def welcome_reference_date(text_value):
+    """
+    '금리안내 - 약정금리 [2026.08.05] 기준'의 날짜만 사용.
+    심의필 기간/약관 날짜 등은 제외한다.
+    """
+    text_value = clean(text_value)
+
+    m = re.search(
+        r"금리안내\s*-\s*약정금리"
+        r".{0,120}?"
+        r"\[\s*(20\d{2})\.(\d{1,2})\.(\d{1,2})\s*\]"
+        r"\s*기준",
+        text_value,
+        re.I
+    )
+
+    if not m:
+        return None
+
+    y, mn, d = map(
+        int,
+        m.groups()
+    )
+
+    return f"{y:04d}-{mn:02d}-{d:02d}"
+
+
+def welcome_isa(bank, kind, cfg):
+    """
+    WELCOME ISA 정기예금.
+
+    공식 상세페이지의 약정금리 표:
+    3 / 6 / 12 / 24 / 36개월 연이율을 사용한다.
+    괄호 안 연수익률은 사용하지 않는다.
+    """
+    try:
+        text_value, final_url = welcome_page_text(
+            WELCOME_ISA_URL
+        )
+
+        if (
+            "WELCOME ISA 정기예금" not in text_value
+            or "ISA 계좌를 통해서만 가입" not in text_value
+        ):
+            raise ValueError(
+                "WELCOME ISA 공식 상품 상세페이지 검증 실패"
+            )
+
+        # 현재 약정금리 표 구간만 제한해서 파싱
+        m = re.search(
+            r"금리안내\s*-\s*약정금리"
+            r".{0,200}?"
+            r"기간\s+연이율\(연수익률\)"
+            r"(?P<section>.*?)"
+            r"(?:예금계산기|중도해지이율)",
+            text_value,
+            re.I
+        )
+
+        section = (
+            m.group("section")
+            if m
+            else text_value
+        )
+
+        rates = {
+            "3m": None,
+            "6m": None,
+            "12m": None,
+            "24m": None,
+            "36m": None,
+        }
+
+        for month in ISA_PERIODS:
+            rm = re.search(
+                rf"(?<!\d){month}\s*개월"
+                r"\s*연\s*"
+                r"(\d{1,2}(?:\.\d{1,4})?)\s*%",
+                section,
+                re.I
+            )
+
+            if not rm:
+                continue
+
+            value = float(
+                rm.group(1)
+            )
+
+            if 0 <= value <= 10:
+                rates[f"{month}m"] = value
+
+        found = sum(
+            value is not None
+            for value in rates.values()
+        )
+
+        status = (
+            "verified_official"
+            if found == 5
+            else "verified_official_partial"
+            if found
+            else "rate_not_found"
+        )
+
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            status
+        )
+
+        o["product"] = "WELCOME ISA 정기예금"
+        o["rates"] = rates
+        o["source_url"] = final_url
+
+        disclosure_date = welcome_reference_date(
+            text_value
+        )
+
+        if disclosure_date:
+            o["disclosure_date"] = disclosure_date
+            o["disclosure_date_source"] = "welcome_rate_table_reference_date"
+            o["disclosure_date_url"] = final_url
+
+        o["note"] = (
+            "웰컴저축은행 공식 WELCOME ISA 정기예금 상세페이지. "
+            "금리안내 약정금리 표의 3/6/12/24/36개월 연이율 사용. "
+            "괄호 안 연수익률 및 중도해지이율 제외."
+        )
+
+        return o
+
+    except Exception as error:
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            "fetch_or_parse_error"
+        )
+        o["source_url"] = WELCOME_ISA_URL
+        o["error"] = str(error)
+        o["note"] = (
+            f"웰컴 ISA 공식 상세페이지 수집 실패: {error}"
+        )
+        return o
+
+
+def welcome_irp_latest_dc_irp(text_value):
+    """
+    웰컴 퇴직연금은 월별 금리를 같은 화면에 같이 보여준다.
+
+    예:
+      (26.07월) 12개월 DC/IRP형 4.82%
+      (26.08월) 12개월 DC/IRP형 3.85%
+
+    가장 최신 월의 DC/IRP형 '약정금리'만 선택한다.
+    괄호 안 연수익률과 DB형은 제외한다.
+    """
+    text_value = clean(text_value)
+
+    rate_pos = text_value.find(
+        "금리안내 - 약정금리"
+    )
+
+    if rate_pos >= 0:
+        section = text_value[
+            rate_pos:
+            rate_pos + 1800
+        ]
+    else:
+        section = text_value
+
+    pattern = re.compile(
+        r"\(\s*(\d{2})\.(\d{1,2})월\s*\)"
+        r".{0,180}?"
+        r"12\s*개월"
+        r".{0,160}?"
+        r"DC\s*/\s*IRP형"
+        r"\s*:\s*연\s*"
+        r"(\d{1,2}(?:\.\d{1,4})?)\s*%",
+        re.I
+    )
+
+    candidates = []
+
+    for m in pattern.finditer(
+        section
+    ):
+        yy = int(
+            m.group(1)
+        )
+        month = int(
+            m.group(2)
+        )
+        rate = float(
+            m.group(3)
+        )
+
+        year = (
+            2000 + yy
+            if yy < 80
+            else 1900 + yy
+        )
+
+        if (
+            1 <= month <= 12
+            and 0 <= rate <= 10
+        ):
+            candidates.append(
+                (
+                    year,
+                    month,
+                    rate
+                )
+            )
+
+    if not candidates:
+        return None, None
+
+    candidates.sort(
+        key=lambda x:(
+            x[0],
+            x[1]
+        ),
+        reverse=True
+    )
+
+    year, month, rate = candidates[0]
+
+    return rate, f"{year:04d}-{month:02d}"
+
+
+def welcome_irp(bank, kind, cfg):
+    """
+    WELCOME 퇴직연금 정기예금.
+
+    현재 공식상품은 12개월이며,
+    최신 월 DC/IRP형 약정금리를 수집한다.
+    DB형은 사용하지 않는다.
+    """
+    try:
+        text_value, final_url = welcome_page_text(
+            WELCOME_IRP_URL
+        )
+
+        if "WELCOME 퇴직연금 정기예금" not in text_value:
+            raise ValueError(
+                "WELCOME IRP 공식 상품 상세페이지 검증 실패"
+            )
+
+        current_rate, rate_month = welcome_irp_latest_dc_irp(
+            text_value
+        )
+
+        rates = {
+            "3m": None,
+            "6m": None,
+            "12m": current_rate,
+            "24m": None,
+            "36m": None,
+        }
+
+        status = (
+            "verified_official_partial"
+            if current_rate is not None
+            else "rate_not_found"
+        )
+
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            status
+        )
+
+        o["product"] = "WELCOME 퇴직연금 정기예금"
+        o["rates"] = rates
+        o["source_url"] = final_url
+        o["rate_month"] = rate_month
+        o["rate_type"] = "DC/IRP"
+
+        disclosure_date = welcome_reference_date(
+            text_value
+        )
+
+        if disclosure_date:
+            o["disclosure_date"] = disclosure_date
+            o["disclosure_date_source"] = "welcome_rate_table_reference_date"
+            o["disclosure_date_url"] = final_url
+
+        o["note"] = (
+            "웰컴저축은행 공식 WELCOME 퇴직연금 정기예금 상세페이지. "
+            "가장 최신 월의 12개월 DC/IRP형 약정금리만 사용. "
+            "DB형 및 괄호 안 연수익률 제외."
+        )
+
+        return o
+
+    except Exception as error:
+        o = blank(
+            bank,
+            kind,
+            cfg,
+            "fetch_or_parse_error"
+        )
+        o["source_url"] = WELCOME_IRP_URL
+        o["error"] = str(error)
+        o["note"] = (
+            f"웰컴 IRP 공식 상세페이지 수집 실패: {error}"
+        )
+        return o
+
+
+P={"woori_isa":woori_isa,"woori_irp":woori_irp,"nh_isa":nh_isa,"nh_irp":nh_irp,"daol_isa":daol_isa,"daol_irp":daol_irp,"nh_safe_pending":nh_safe_pending,"acuon_safe_pending":acuon_safe_pending,"acuon_isa":acuon_isa,"acuon_irp":acuon_irp,"sbi_safe_pending":sbi_safe_pending,"verified_source_pending":verified_source_pending,"hana_isa":hana_isa,"hana_irp":hana_irp,"shinhan_isa":shinhan_isa,"shinhan_irp":shinhan_irp,"kb_isa":kb_isa,"kb_irp":kb_irp,"ok_isa":ok_isa,"ok_irp":ok_irp,"welcome_isa":welcome_isa,"welcome_irp":welcome_irp}
 def one(bank,kind,cfg):
     if cfg.get("available") is False:return blank(bank,kind,cfg,"not_available")
     if cfg.get("available") is None:return blank(bank,kind,cfg,"research_pending")
@@ -1580,6 +2636,995 @@ def db_isa_official(bank,kind,cfg):
     return o
 
 
+
+# ============================================================
+# 공시일 / 시행일 표준화
+# ============================================================
+
+def normalize_date_value(value):
+    """
+    다양한 날짜 표기를 YYYY-MM-DD로 통일.
+    지원:
+    - 2026-08-03
+    - 2026.08.03
+    - 2026/08/03
+    - 2026년 08월 03일
+    """
+    value=clean(value)
+
+    if not value:
+        return None
+
+    patterns=[
+        r"(\d{4})[-./](\d{1,2})[-./](\d{1,2})",
+        r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일",
+    ]
+
+    for pattern in patterns:
+        m=re.search(pattern,value)
+
+        if not m:
+            continue
+
+        y,mn,d=map(int,m.groups())
+
+        return f"{y:04d}-{mn:02d}-{d:02d}"
+
+    return None
+
+
+def attach_disclosure_date(item):
+    """
+    기존 수집값은 그대로 유지하고
+    disclosure_date / collected_at 표준 필드만 추가.
+
+    우선순위:
+    disclosure_date -> effective_date -> reference_date
+    -> note 안 날짜 -> disclosure_sources 안 날짜
+    """
+    if not isinstance(item,dict):
+        return item
+
+    candidates=[
+        item.get("disclosure_date"),
+        item.get("effective_date"),
+        item.get("reference_date"),
+        item.get("note"),
+    ]
+
+    sources=item.get("disclosure_sources",[])
+
+    if isinstance(sources,list):
+        for source in sources:
+            if not isinstance(source,dict):
+                continue
+
+            for key in (
+                "disclosure_date",
+                "effective_date",
+                "reference_date",
+                "date",
+                "base_date",
+                "rate_date",
+            ):
+                value=source.get(key)
+                if value:
+                    candidates.append(value)
+
+    disclosure_date=None
+
+    for candidate in candidates:
+        normalized=normalize_date_value(candidate)
+
+        if normalized:
+            disclosure_date=normalized
+            break
+
+    item["disclosure_date"]=disclosure_date
+
+    item["collected_at"]=(
+        item.get("updated_at")
+        or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+    return item
+
+
+
+
+# ============================================================
+# v5.2 공시일 직접 탐색
+# - 기존 금리 수집값은 절대 변경하지 않음
+# - disclosure_date가 None인 경우에만 공식 화면에서 날짜 탐색
+# - '기준일/시행일/적용일/변경일/공시일'과 가까운 날짜만 채택
+# ============================================================
+
+DISCLOSURE_PAGE_MAP={
+    "우리금융":{
+        "ISA":"https://www.woorisavingsbank.com/deposite-interest/view.do",
+        "IRP":"https://www.woorisavingsbank.com/product/deposite/list.do",
+    },
+    "KB":{
+        "ISA":"https://www.kbsavings.com/websquare/websquare.jsp?w2xPath=/jsp/depositItemInfo/depositItemInfo.xml&ITEM_CODE=IB13",
+        "IRP":"https://www.kbsavings.com/websquare/websquare.jsp?w2xPath=/jsp/depositItemInfo/depositItemInfo.xml&ITEM_CODE=IB18",
+    },
+    "신한":{
+        "ISA":"https://www.shinhansavings.com/PD_0080",
+        "IRP":"https://www.shinhansavings.com/PD_0081",
+    },
+    "하나":{
+        "ISA":"https://www.hanasavings.com/YPR/YPR0103",
+        "IRP":"https://www.hanasavings.com/YPR/YPR0104",
+    },
+    "애큐온":{
+        "ISA":"https://www.acuonsb.co.kr/sv_dpt1201170.act",
+        "IRP":"https://www.acuonsb.co.kr/sv_dpt1201171.act",
+    },
+}
+
+DATE_KEYWORDS=(
+    "기준일",
+    "기준 일",
+    "시행일",
+    "시행 일",
+    "적용일",
+    "적용 일",
+    "변경일",
+    "변경 일",
+    "최종금리변경일",
+    "금리변경일",
+    "공시일",
+    "공시 일",
+    "고시일",
+    "고시 일",
+)
+
+DATE_PATTERN=re.compile(
+    r"(\d{4})\s*(?:[-./년]\s*)"
+    r"(\d{1,2})\s*(?:[-./월]\s*)"
+    r"(\d{1,2})\s*(?:일)?"
+)
+
+
+def strict_date_from_text(text):
+    text=clean(text)
+
+    if not text:
+        return None
+
+    candidates=[]
+
+    for keyword in DATE_KEYWORDS:
+        start=0
+
+        while True:
+            pos=text.find(keyword,start)
+
+            if pos < 0:
+                break
+
+            left=max(0,pos-100)
+            right=min(len(text),pos+len(keyword)+140)
+            window=text[left:right]
+
+            for m in DATE_PATTERN.finditer(window):
+                try:
+                    y,mn,d=map(int,m.groups())
+
+                    if (
+                        2000 <= y <= 2100
+                        and 1 <= mn <= 12
+                        and 1 <= d <= 31
+                    ):
+                        candidates.append(
+                            f"{y:04d}-{mn:02d}-{d:02d}"
+                        )
+                except Exception:
+                    pass
+
+            start=pos+len(keyword)
+
+    if not candidates:
+        return None
+
+    return max(candidates)
+
+
+def fetch_disclosure_page_date(bank,category):
+    url=(
+        DISCLOSURE_PAGE_MAP
+        .get(bank,{})
+        .get(category)
+    )
+
+    if not url:
+        return None,None
+
+    try:
+        html,final_url=fetch(url)
+    except Exception:
+        return None,url
+
+    try:
+        soup=BeautifulSoup(
+            html,
+            "html.parser"
+        )
+        text_value=" ".join(
+            soup.stripped_strings
+        )
+    except Exception:
+        text_value=html
+
+    return (
+        strict_date_from_text(
+            text_value
+        ),
+        final_url,
+    )
+
+
+def enrich_disclosure_date(item):
+    item=attach_disclosure_date(item)
+
+    if not isinstance(item,dict):
+        return item
+
+    if item.get("disclosure_date"):
+        item["disclosure_date_source"]="existing_collector"
+        return item
+
+    bank=clean(
+        item.get("bank")
+    )
+    category=clean(
+        item.get("category")
+    ).upper()
+
+    date_value,date_url=(
+        fetch_disclosure_page_date(
+            bank,
+            category,
+        )
+    )
+
+    if date_value:
+        item["disclosure_date"]=date_value
+        item["disclosure_date_source"]="official_page_keyword"
+        item["disclosure_date_url"]=date_url
+    else:
+        item["disclosure_date_source"]="not_found"
+
+        if date_url:
+            item["disclosure_date_url"]=date_url
+
+    return item
+
+
+
+
+# ============================================================
+# v5.4 SAFE 공시일 수집
+#
+# 원칙
+# 1. 기존 금리 수집 로직은 변경하지 않는다.
+# 2. existing_collector 날짜(OK/한국투자/다올/DB 등)는 그대로 보존한다.
+# 3. 공식 페이지/API 응답에서 날짜 의미가 명확한 경우만 채운다.
+# 4. 애큐온 v5.2의 2020-05-20 같은 오래된 상품등록일 오인식을 차단한다.
+# 5. 날짜 근거가 불명확하면 None 유지한다.
+# ============================================================
+
+SAFE_DATE_KEYWORDS=(
+    "기준일",
+    "시행일",
+    "적용일",
+    "금리변경일",
+    "최종금리변경일",
+    "공시일",
+)
+
+SAFE_DATE_KEY_PARTS=(
+    "BASE_DT",
+    "BAS_DT",
+    "STD_DT",
+    "APLY_DT",
+    "APLY_YMD",
+    "EFFECTIVE",
+    "EFF_DT",
+    "START_DT",
+    "STRT_DT",
+    "CHG_DT",
+    "CHANGE_DT",
+    "REG_DT",
+    "UPD_DT",
+    "DATE",
+    "YMD",
+)
+
+KB_DISCLOSURE_URL="https://okbfex.kbstar.com/quics?page=C110015"
+
+_KB_DISCLOSURE_DATE_CACHE=None
+
+
+def safe_date_token(value):
+    """
+    값 자체가 날짜 형태일 때만 YYYY-MM-DD로 변환.
+    """
+    return normalize_date_value(
+        clean(value)
+    )
+
+
+def safe_date_from_keyword_text(text):
+    """
+    공식 화면 본문에서 날짜 키워드 바로 주변의 날짜만 찾는다.
+    """
+    text=clean(text)
+
+    if not text:
+        return None
+
+    candidates=[]
+
+    for keyword in SAFE_DATE_KEYWORDS:
+        start=0
+
+        while True:
+            pos=text.find(keyword,start)
+
+            if pos < 0:
+                break
+
+            # 키워드 뒤쪽을 우선 본다.
+            window=text[
+                pos:
+                min(
+                    len(text),
+                    pos+160
+                )
+            ]
+
+            found=normalize_date_value(
+                window
+            )
+
+            if found:
+                candidates.append(
+                    found
+                )
+
+            start=pos+len(keyword)
+
+    if not candidates:
+        return None
+
+    return max(candidates)
+
+
+def recursive_date_candidates(obj,path=""):
+    """
+    JSON/API 응답에서 날짜 의미가 있는 key만 탐색한다.
+    단순히 값이 날짜처럼 보인다고 채택하지 않는다.
+    """
+    found=[]
+
+    if isinstance(obj,dict):
+        for key,value in obj.items():
+            key_text=clean(key).upper()
+            child_path=f"{path}.{key}" if path else str(key)
+
+            key_is_date=(
+                any(
+                    part in key_text
+                    for part in SAFE_DATE_KEY_PARTS
+                )
+                or "기준" in str(key)
+                or "시행" in str(key)
+                or "적용" in str(key)
+                or "변경" in str(key)
+                or "공시" in str(key)
+            )
+
+            if key_is_date:
+                date_value=safe_date_token(
+                    value
+                )
+
+                if date_value:
+                    found.append(
+                        (
+                            date_value,
+                            child_path,
+                        )
+                    )
+
+            found.extend(
+                recursive_date_candidates(
+                    value,
+                    child_path
+                )
+            )
+
+    elif isinstance(obj,list):
+        for idx,value in enumerate(obj):
+            found.extend(
+                recursive_date_candidates(
+                    value,
+                    f"{path}[{idx}]"
+                )
+            )
+
+    return found
+
+
+def choose_latest_safe_date(candidates):
+    """
+    (date, source_path) 목록 중 가장 최근 날짜.
+    """
+    valid=[
+        item
+        for item in candidates
+        if (
+            isinstance(item,(list,tuple))
+            and len(item)>=2
+            and item[0]
+        )
+    ]
+
+    if not valid:
+        return None,None
+
+    valid.sort(
+        key=lambda x:x[0],
+        reverse=True
+    )
+
+    return valid[0][0],valid[0][1]
+
+
+def collect_woori_disclosure_date(category):
+    """
+    우리금융은 v5.2에서 ISA 공식 금리공시 화면의
+    기준일을 정상 추출한 것이 확인되어 해당 방식만 유지.
+    IRP는 상품목록에 명확한 날짜가 없으면 None.
+    """
+    if category=="ISA":
+        url="https://www.woorisavingsbank.com/deposite-interest/view.do"
+    else:
+        url="https://www.woorisavingsbank.com/product/deposite/list.do"
+
+    try:
+        html,final_url=fetch(url)
+        soup=BeautifulSoup(
+            html,
+            "html.parser"
+        )
+        body=" ".join(
+            soup.stripped_strings
+        )
+
+        return (
+            safe_date_from_keyword_text(
+                body
+            ),
+            final_url,
+            "woori_official_page"
+        )
+
+    except Exception:
+        return None,url,None
+
+
+
+def collect_kb_disclosure_date(category):
+    """
+    v5.4 KB 공시일 수집
+
+    조사 Probe 결과:
+    - ISA 이율안내: (2026.7.23. 세전기준, 연%)
+    - IRP 이율안내: (기준일 2026.8.1. 세금공제전, ...)
+
+    상품설명서/중도해지이율의 오래된 날짜는 제외하고,
+    '이율안내' 블록 맨 앞의 현재 금리표 기준일만 사용한다.
+    """
+    item_code=(
+        "IB13"
+        if category=="ISA"
+        else "IB18"
+    )
+
+    try:
+        result,info,summary,api_url,payload_no=kb_item_info(
+            item_code
+        )
+
+        content_html=kb_info_html(
+            info,
+            "이율안내"
+        )
+
+        content_text=clean(
+            BeautifulSoup(
+                str(content_html or ""),
+                "html.parser"
+            ).get_text(
+                " ",
+                strip=True
+            )
+        )
+
+        if category=="ISA":
+            m=re.search(
+                r"\(\s*(\d{4})\.(\d{1,2})\.(\d{1,2})\.?\s*세전기준",
+                content_text,
+                re.I
+            )
+            source_name="kb_rate_table_sejeon_basis"
+
+        else:
+            m=re.search(
+                r"기준일\s*(\d{4})\.(\d{1,2})\.(\d{1,2})\.?",
+                content_text,
+                re.I
+            )
+            source_name="kb_rate_table_reference_date"
+
+        if not m:
+            return None,api_url,None
+
+        y,mn,d=map(
+            int,
+            m.groups()
+        )
+
+        return (
+            f"{y:04d}-{mn:02d}-{d:02d}",
+            api_url,
+            source_name
+        )
+
+    except Exception:
+        return None,None,None
+
+
+
+def _shinhan_rate_guide_map(payload):
+    """
+    selectSavPd 안에서 '금리안내' 항목을 찾는다.
+    """
+    data=payload.get(
+        "data",
+        payload
+    )
+
+    rows=(
+        data.get(
+            "selectSavPd",
+            []
+        )
+        if isinstance(data,dict)
+        else []
+    )
+
+    if not isinstance(rows,list):
+        return None
+
+    for row in rows:
+        if not isinstance(row,dict):
+            continue
+
+        item=(
+            row.get("map")
+            if isinstance(
+                row.get("map"),
+                dict
+            )
+            else row
+        )
+
+        if clean(
+            item.get("itmNm")
+        )=="금리안내":
+            return item
+
+    return None
+
+
+def _shinhan_iso_to_kst_date(value):
+    """
+    신한 bulSrDt는 ISO UTC(+00:00) 형태.
+    게시 시작일을 한국시간(KST) 날짜로 변환.
+    """
+    value=clean(value)
+
+    if not value:
+        return None
+
+    try:
+        dt=datetime.fromisoformat(
+            value.replace(
+                "Z",
+                "+00:00"
+            )
+        )
+
+        # 응답이 timezone-aware면 UTC 기준 +9시간
+        if dt.tzinfo is not None:
+            dt=dt+timedelta(
+                hours=9
+            )
+
+        return dt.strftime(
+            "%Y-%m-%d"
+        )
+
+    except Exception:
+        m=re.search(
+            r"(\d{4})-(\d{2})-(\d{2})",
+            value
+        )
+
+        if not m:
+            return None
+
+        return "-".join(
+            m.groups()
+        )
+
+
+def collect_shinhan_disclosure_date(category):
+    """
+    v5.4 신한 공시일 수집
+
+    1순위:
+    '금리안내' HTML 안의
+    YYYY.MM.DD 현재 기준
+
+    2순위:
+    금리안내 게시물의 bulSrDt를 KST 날짜로 변환.
+    (특히 IRP처럼 본문에 기준일 문구가 없는 경우)
+    """
+    if category=="ISA":
+        page="/PD_0080"
+        api="/PD0080/selectSavPd.json"
+        pd_cd=24014
+    else:
+        page="/PD_0081"
+        api="/PD0081/selectSavPd.json"
+        pd_cd=24015
+
+    try:
+        payload,api_url=shinhan_api_post(
+            page,
+            api,
+            pd_cd
+        )
+
+        guide=_shinhan_rate_guide_map(
+            payload
+        )
+
+        if not isinstance(
+            guide,
+            dict
+        ):
+            return None,api_url,None
+
+        guide_html=clean(
+            guide.get("itmTt")
+        )
+
+        m=re.search(
+            r"(\d{4})\.(\d{1,2})\.(\d{1,2})\s*현재\s*기준",
+            guide_html,
+            re.I
+        )
+
+        if m:
+            y,mn,d=map(
+                int,
+                m.groups()
+            )
+
+            return (
+                f"{y:04d}-{mn:02d}-{d:02d}",
+                api_url,
+                "shinhan_rate_guide_current_basis"
+            )
+
+        # 본문에 현재 기준일이 없는 경우
+        # 금리안내 게시물 시작일을 공시 게시일로 사용
+        bul_date=_shinhan_iso_to_kst_date(
+            guide.get(
+                "bulSrDt"
+            )
+        )
+
+        if bul_date:
+            return (
+                bul_date,
+                api_url,
+                "shinhan_rate_guide_bulSrDt_kst"
+            )
+
+        return None,api_url,None
+
+    except Exception:
+        return None,None,None
+
+
+
+def collect_hana_disclosure_date(category):
+    """
+    v5.4 하나 공시일 수집
+
+    Probe 결과:
+    - ISA는 금리표 바로 앞에
+      '(2026.07.16 현재, 세전, 연)' 형태가 존재.
+    - IRP 페이지에서 발견된 2025.08.07 등은
+      준법감시인 심의기간이므로 공시일로 사용하지 않음.
+
+    명확한 '현재' 금리 기준일만 채택한다.
+    """
+    url=(
+        "https://www.hanasavings.com/YPR/YPR0103"
+        if category=="ISA"
+        else "https://www.hanasavings.com/YPR/YPR0104"
+    )
+
+    try:
+        html,final_url=fetch(
+            url
+        )
+
+        soup=BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        body=" ".join(
+            soup.stripped_strings
+        )
+
+        m=re.search(
+            r"\(\s*(\d{4})\.(\d{1,2})\.(\d{1,2})\s*현재\s*,?\s*세전",
+            body,
+            re.I
+        )
+
+        if not m:
+            # '현재 기준' 형태도 보완
+            m=re.search(
+                r"(\d{4})\.(\d{1,2})\.(\d{1,2})\s*현재\s*기준",
+                body,
+                re.I
+            )
+
+        if not m:
+            return None,final_url,None
+
+        y,mn,d=map(
+            int,
+            m.groups()
+        )
+
+        return (
+            f"{y:04d}-{mn:02d}-{d:02d}",
+            final_url,
+            "hana_rate_table_current_basis"
+        )
+
+    except Exception:
+        return None,url,None
+
+
+def collect_acuon_disclosure_date(category):
+    """
+    애큐온은 v5.2에서 일반 페이지의 과거 상품등록일을
+    공시일로 오인했으므로 페이지 전체 날짜검색은 금지.
+
+    공식 JEX 상품정보 API payload의
+    날짜 의미 key만 탐색한다.
+    """
+    product_code=(
+        "1201170"
+        if category=="ISA"
+        else "1201171"
+    )
+
+    try:
+        payload,api_url=acuon_api_post(
+            product_code
+        )
+
+        candidates=recursive_date_candidates(
+            payload,
+            "payload"
+        )
+
+        date_value,path=choose_latest_safe_date(
+            candidates
+        )
+
+        return (
+            date_value,
+            api_url,
+            (
+                f"acuon_official_api:{path}"
+                if date_value
+                else None
+            )
+        )
+
+    except Exception:
+        return None,None,None
+
+
+def collect_kb_thirdparty_disclosure_date():
+    """
+    KB퇴직연금 타사제공상품 화면에 명확한 기준일이 있을 때만 사용.
+    페이지에서 기준일/시행일/적용일/공시일 주변 날짜가 없으면 None.
+    """
+    global _KB_DISCLOSURE_DATE_CACHE
+
+    if _KB_DISCLOSURE_DATE_CACHE is not None:
+        return _KB_DISCLOSURE_DATE_CACHE
+
+    try:
+        html,final_url=fetch(
+            KB_DISCLOSURE_URL
+        )
+
+        soup=BeautifulSoup(
+            html,
+            "html.parser"
+        )
+
+        body=" ".join(
+            soup.stripped_strings
+        )
+
+        date_value=safe_date_from_keyword_text(
+            body
+        )
+
+        _KB_DISCLOSURE_DATE_CACHE=(
+            date_value,
+            final_url
+        )
+
+    except Exception:
+        _KB_DISCLOSURE_DATE_CACHE=(
+            None,
+            KB_DISCLOSURE_URL
+        )
+
+    return _KB_DISCLOSURE_DATE_CACHE
+
+
+def v53_bank_date(bank,category):
+    """
+    은행별 안전 공시일 collector dispatcher.
+    """
+    if bank=="우리금융":
+        return collect_woori_disclosure_date(
+            category
+        )
+
+    if bank=="KB":
+        return collect_kb_disclosure_date(
+            category
+        )
+
+    if bank=="신한":
+        return collect_shinhan_disclosure_date(
+            category
+        )
+
+    if bank=="하나":
+        return collect_hana_disclosure_date(
+            category
+        )
+
+    if bank=="애큐온":
+        return collect_acuon_disclosure_date(
+            category
+        )
+
+    return None,None,None
+
+
+def enrich_disclosure_date_v53(item):
+    """
+    최종 공시일 병합.
+
+    기존 collector가 이미 날짜를 가진 경우:
+        그대로 보존.
+
+    미보유:
+        은행별 안전 collector 실행.
+
+    IRP가 KB 타사제공상품 공시 병합 데이터인 경우:
+        KB 타사공시 화면의 명확한 기준일만 fallback으로 사용.
+    """
+    item=attach_disclosure_date(
+        item
+    )
+
+    if not isinstance(item,dict):
+        return item
+
+    # --------------------------------------------------------
+    # 이미 검증된 날짜 보존
+    # --------------------------------------------------------
+    if item.get("disclosure_date"):
+        # v5.2 애큐온 오인식 값은 사용하지 않는다.
+        if (
+            clean(item.get("bank"))=="애큐온"
+            and item.get("disclosure_date_source")=="official_page_keyword"
+        ):
+            item["disclosure_date"]=None
+        else:
+            item["disclosure_date_source"]="existing_collector"
+            return item
+
+    bank=clean(
+        item.get("bank")
+    )
+    category=clean(
+        item.get("category")
+    ).upper()
+
+    # --------------------------------------------------------
+    # 은행별 직접 수집
+    # --------------------------------------------------------
+    date_value,date_url,date_source=v53_bank_date(
+        bank,
+        category
+    )
+
+    if date_value:
+        item["disclosure_date"]=date_value
+        item["disclosure_date_source"]=date_source or "official_source"
+        item["disclosure_date_url"]=date_url
+        return item
+
+    # --------------------------------------------------------
+    # IRP: KB 타사제공상품 공시 병합 결과 fallback
+    # --------------------------------------------------------
+    if (
+        category=="IRP"
+        and isinstance(
+            item.get("disclosure_sources"),
+            list
+        )
+        and any(
+            clean(source.get("source_name"))=="KB퇴직연금_타사제공상품"
+            for source in item.get(
+                "disclosure_sources",
+                []
+            )
+            if isinstance(source,dict)
+        )
+    ):
+        kb_date,kb_url=collect_kb_thirdparty_disclosure_date()
+
+        if kb_date:
+            item["disclosure_date"]=kb_date
+            item["disclosure_date_source"]="kb_thirdparty_disclosure_page"
+            item["disclosure_date_url"]=kb_url
+            return item
+
+    item["disclosure_date"]=None
+    item["disclosure_date_source"]="not_found"
+
+    if date_url:
+        item["disclosure_date_url"]=date_url
+
+    return item
+
+
+
 def main():
     mp=load(MAP)
     a=[]
@@ -1587,15 +3632,38 @@ def main():
     disclosure_banks=load_irp_disclosure()
 
     print("="*72)
-    print("SBRateBot V5 ISA / IRP Collector v5 - Official Source Map")
+    print("SBRateBot V5 ISA / IRP Collector v5.6 - Welcome Integrated Final")
     print("="*72)
 
     for i,(bank,cfg) in enumerate(mp["banks"].items(),1):
 
+        # 한국투자:
+        # 기존 성공 통합본은 그대로 유지하고,
+        # 한국투자만 검증 완료된 Selenium/WebSquare 전용 수집기를 사용.
+        if bank=="한국투자":
+            try:
+                ki=get_koreainvest_official(bank,cfg)
+                x=ki["ISA"]
+                y=ki["IRP"]
+            except Exception as e:
+                x=blank(bank,"isa",cfg["isa"],"fetch_or_parse_error")
+                y=blank(bank,"irp",cfg["irp"],"fetch_or_parse_error")
+                x["error"]=str(e)
+                y["error"]=str(e)
+                x["note"]=f"한국투자 공식 WebSquare 수집 실패: {e}"
+                y["note"]=f"한국투자 공식 WebSquare 수집 실패: {e}"
+
+        # 웰컴:
+        # 공식 상품 상세 URL이 확인된 ISA/IRP 전용 수집기를 사용.
+        # source_map의 과거 parser 설정과 무관하게 최신 공식 상세페이지를 직접 읽는다.
+        elif bank in ("웰컴","웰컴저축은행"):
+            x=welcome_isa(bank,"isa",cfg["isa"])
+            y=welcome_irp(bank,"irp",cfg["irp"])
+
         # OK:
         # ISA/IRP 모두 검증 완료된 공식 홈페이지 API를 사용.
         # 공식 API에서 제공하지 않는 기간을 과거 공시값으로 보충하지 않는다.
-        if bank=="OK":
+        elif bank=="OK":
             x=ok_isa(bank,"isa",cfg["isa"])
             y=ok_irp(bank,"irp",cfg["irp"])
 
@@ -1620,6 +3688,19 @@ def main():
                 y,
                 disclosure_banks
             )
+
+        x=enrich_disclosure_date_v53(x)
+        y=enrich_disclosure_date_v53(y)
+
+        # 한국투자 공시일은 공식 자동수집 안정성이 확보될 때까지 공란 유지.
+        # 금리 수집 성공 여부와는 별개로 잘못된 날짜를 표시하지 않는다.
+        if bank=="한국투자":
+            x["disclosure_date"]=None
+            y["disclosure_date"]=None
+            x["disclosure_date_source"]="not_collected"
+            y["disclosure_date_source"]="not_collected"
+            x.pop("disclosure_date_url",None)
+            y.pop("disclosure_date_url",None)
 
         a.append(x)
         b.append(y)
