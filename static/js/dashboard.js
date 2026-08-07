@@ -15,6 +15,84 @@ let dashboardKPIData = {};
 
 let wooriMarketData = {};
 
+let activeMarketProduct = "deposit";
+let currentMarketItems = [];
+let currentMarketMeta = {};
+let currentMarketPeriod = "12";
+let marketModeRequestId = 0;
+
+const MARKET_PRODUCT_CONFIG = {
+    deposit:{label:"정기예금"},
+    isa:{label:"ISA"},
+    irp:{label:"퇴직연금(IRP)"}
+};
+
+function marketProductLabel(mode = activeMarketProduct){
+    return MARKET_PRODUCT_CONFIG[mode]?.label || "정기예금";
+}
+
+function currentSelectedPeriod(){
+    return document.getElementById("product-period-select")?.value || currentMarketPeriod || "12";
+}
+
+function normalizeMarketItem(item,index=0){
+    const rawRate=item?.rate ?? item?.intr_rate2 ?? item?.max_rate ?? item?.intr_rate;
+    const rate=(rawRate===null || rawRate===undefined || rawRate==="") ? null : Number(rawRate);
+    return {
+        ...item,
+        bank:item?.bank ?? item?.bank_name ?? item?.kor_co_nm ?? "-",
+        product:item?.product ?? item?.product_name ?? item?.fin_prdt_nm ?? marketProductLabel(),
+        rate:Number.isFinite(rate)?rate:null,
+        disclosure_date:item?.disclosure_date ?? null,
+        period:item?.period ?? `${currentSelectedPeriod()}개월`,
+        rank:item?.rank ?? index+1,
+        change:Number(item?.change ?? item?.diff ?? 0) || 0
+    };
+}
+
+function validRateItems(items){
+    return (Array.isArray(items) ? items : [])
+        .map(normalizeMarketItem)
+        .filter(item => {
+            const raw = item?.rate;
+            if(raw === null || raw === undefined || raw === ""){
+                return false;
+            }
+
+            const rate = Number(raw);
+            return Number.isFinite(rate) && rate > 0;
+        });
+}
+
+function findWooriItem(items){
+    return (Array.isArray(items)?items:[])
+        .map(normalizeMarketItem)
+        .find(item=>String(item.bank).includes("우리금융")) || null;
+}
+
+function disclosureSortValue(value){
+    if(!value) return 0;
+    const t=Date.parse(String(value).replace(/\./g,"-"));
+    return Number.isFinite(t)?t:0;
+}
+
+function normalizeBankCore(name){
+    return String(name||"").replace(/저축은행|금융|주식회사|㈜|\s/g,"").toUpperCase();
+}
+
+function isWooriBank(name){
+    return String(name || "").includes("우리금융");
+}
+
+function displayBankName(name){
+    return String(name || "-")
+        .replace(/저축은행/g, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+}
+
+
+
 window.sbLastAIQuestion = window.sbLastAIQuestion || "";
 window.sbLastAIAnswer = window.sbLastAIAnswer || "";
 
@@ -24,6 +102,18 @@ console.log(
     "🔥 DASHBOARD JS LOADED"
 );
 
+
+
+document.addEventListener("click", function(event){
+    const sideBtn = event.target.closest("#ai-side-detail-btn");
+    if(sideBtn){
+        const normalDetail = document.getElementById("ai-detail-modal");
+        if(normalDetail){
+            normalDetail.classList.add("hidden");
+            normalDetail.classList.remove("flex");
+        }
+    }
+}, true);
 
 
 document.addEventListener(
@@ -44,6 +134,417 @@ document.addEventListener(
 
 
 
+
+/* ==========================================================
+   3-PRODUCT MARKET MODE
+========================================================== */
+
+function updateMarketProductTabs(){
+    document.querySelectorAll("[data-market-product]").forEach(button=>{
+        const active=button.dataset.marketProduct===activeMarketProduct;
+        button.className=active
+            ?"market-product-tab bg-[#1a58c8] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm"
+            :"market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700";
+    });
+}
+
+function setText(id,value){
+    const el=document.getElementById(id); if(el) el.textContent=value;
+}
+function setHtml(id,value){
+    const el=document.getElementById(id); if(el) el.innerHTML=value;
+}
+
+function updateMarketProductLabels(){
+    const label=marketProductLabel();
+    const period=currentSelectedPeriod()||"12";
+    setText("dashboard-market-label",`📌 저축은행 ${label}(${period}개월) 시장현황`);
+    setText("market-top10-title",activeMarketProduct==="deposit"?"🏆 시장 TOP10":`🏆 ${label} TOP10`);
+    setText("market-top10-meta",`${label} ${period}개월 · ${activeMarketProduct==="irp" ? "IRP 기준금리" : "최고금리 기준"}`);
+    setText("product-panel-caption",activeMarketProduct==="deposit"?"정기예금 전체 기간 조회":`${label} 공시상품 조회 · 공시일 포함`);
+    const q=document.getElementById("ai-question");
+    if(q) q.placeholder=activeMarketProduct==="deposit"?"(예시) 금융지주 저축은행 금리 알려줘":`(예시) 우리금융 ${label} 경쟁력 알려줘`;
+}
+
+function updateAlternativeHeaders(){
+    const isDeposit = activeMarketProduct === "deposit";
+
+    setText("market-top10-col4", isDeposit ? "전일比" : "공시일");
+    setText("market-top10-col4-right", isDeposit ? "전일比" : "공시일");
+
+    if(isDeposit){
+        setText("market-left-card-title","📈 상승 TOP5");
+        setText("market-right-card-title","📉 하락 TOP5");
+        setText("market-left-col4","전일比");
+        setText("market-right-col4","전일比");
+        setText("product-last-header","전일比");
+    }else{
+        setText("market-left-card-title","🗓️ 최근 공시 TOP5");
+        setText("market-right-card-title","🎯 우리금융比 상위 TOP5");
+        setText("market-left-col4","공시일");
+        setText("market-right-col4","당행比");
+        setText("product-last-header","공시일");
+    }
+}
+
+function updateProductSortOptions(){
+    const select=document.getElementById("product-sort-select");
+    if(!select) return;
+    const current=select.value;
+    select.innerHTML=activeMarketProduct==="deposit"
+        ?`<option value="rate_desc">금리 높은순</option><option value="rate_asc">금리 낮은순</option><option value="change_desc">변동폭 큰순</option><option value="bank_asc">은행명순</option>`
+        :`<option value="rate_desc">금리 높은순</option><option value="rate_asc">금리 낮은순</option><option value="disclosure_desc">공시일 최신순</option><option value="bank_asc">은행명순</option>`;
+    select.value=[...select.options].some(o=>o.value===current)?current:"rate_desc";
+}
+
+async function fetchAlternativeMarketItems(mode=activeMarketProduct,period=currentSelectedPeriod()){
+    const endpoint=mode==="isa"?"/api/isa":"/api/irp";
+    const data=await apiFetch(`${endpoint}?period=${encodeURIComponent(period||"12")}`);
+    const items=Array.isArray(data)?data:(Array.isArray(data?.items)?data.items:[]);
+    currentMarketMeta=data && !Array.isArray(data)?data:{};
+    currentMarketItems=items.map(normalizeMarketItem);
+    currentMarketPeriod=String(period||"12");
+    return currentMarketItems;
+}
+
+function buildAlternativeKPI(items){
+    const valid=validRateItems(items).sort((a,b)=>Number(b.rate)-Number(a.rate));
+    const woori=findWooriItem(valid);
+    const rates=valid.map(i=>Number(i.rate));
+    const max=rates.length?Math.max(...rates):null;
+    const min=rates.length?Math.min(...rates):null;
+    const avg=rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null;
+    const rank=woori?valid.findIndex(i=>String(i.bank).includes("우리금융"))+1:null;
+    return {valid,woori,max,min,avg,rank,total:valid.length,disclosed:items.filter(i=>i.disclosure_date).length};
+}
+
+function neutralGap(value){
+    const n=Number(value);
+    if(!Number.isFinite(n)) return '<span class="text-gray-500">-</span>';
+    if(n>0) return `<span class="text-blue-600 font-bold">+${n.toFixed(2)}%p</span>`;
+    if(n<0) return `<span class="text-red-600 font-bold">▲${Math.abs(n).toFixed(2)}%p</span>`;
+    return '<span class="text-gray-800 font-bold">0.00%p</span>';
+}
+
+function renderAlternativeHero(items){
+    const {valid,woori,max,min,avg,rank,total,disclosed}=buildAlternativeKPI(items);
+    const wr=Number(woori?.rate);
+    setText("kpi-rank",rank||"-");
+    setText("kpi-woori-rate-mini",Number.isFinite(wr)?`${wr.toFixed(2)}%`:"-");
+    setText("kpi-best-rate-mini",max!=null?`${max.toFixed(2)}%`:"-");
+    setText("kpi-lowest-rate-mini",min!=null?`${min.toFixed(2)}%`:"-");
+    setHtml("kpi-highest-gap",Number.isFinite(wr)&&Number.isFinite(max)?neutralGap(wr-max):"-");
+    setHtml("kpi-lowest-gap",Number.isFinite(wr)&&Number.isFinite(min)?neutralGap(wr-min):"-");
+    setText("kpi-average-rate",avg!=null?`${avg.toFixed(2)}%`:"-");
+    setHtml("kpi-average-gap",Number.isFinite(wr)&&Number.isFinite(avg)?neutralGap(wr-avg):"-");
+    setText("kpi-product-count",`${items.length}개`);
+    setText("kpi-change-count",`${disclosed}건`);
+
+    const label=marketProductLabel(), top=valid[0];
+    const summary=document.getElementById("executive-summary-mini");
+    if(summary){
+        summary.innerHTML=`<div class="space-y-1.5">
+          <div><b>${label} 최고금리</b> ${top?`${displayBankName(top.bank)} ${Number(top.rate).toFixed(2)}%`:"-"}</div>
+          <div><b>우리금융</b> ${woori?`${Number(woori.rate).toFixed(2)}% · ${rank}위/${total}`:"금리 확인 필요"}</div>
+          <div><b>시장 평균</b> ${avg!=null?`${avg.toFixed(2)}%`:"-"}</div>
+          <div class="text-gray-400">공시일 확인 ${disclosed}/${items.length}개 기관</div>
+        </div>`;
+    }
+    setText("wibee-woori-rate",Number.isFinite(wr)?`${wr.toFixed(2)}%`:"-");
+    setText("wibee-best-rate",max!=null?`${max.toFixed(2)}%`:"-");
+    setText("wibee-average-rate",avg!=null?`${avg.toFixed(2)}%`:"-");
+    setText("wibee-rank",rank?`${rank}위 / ${total}`:"-");
+    setText("wibee-rise-count",disclosed);
+    setText("wibee-fall-count",items.length-disclosed);
+    setText("wibee-change-count",items.length);
+    setText("wibee-rise-label","공시확인");
+    setText("wibee-fall-label","공시미확인");
+    setText("wibee-change-label","수집기관");
+    const status=document.getElementById("wibee-market-status");
+    if(status){status.className="inline-flex items-center gap-1 text-blue-600";status.innerHTML='<span class="w-2 h-2 rounded-full bg-blue-500"></span>공시 모니터링';}
+    setText("wibee-judgement",woori?`우리금융 ${label}은 ${rank}위/${total}이며 공시일과 상위권 금리를 함께 모니터링합니다.`:`우리금융 ${label} 금리 확인이 필요합니다.`);
+}
+
+function renderAlternativeTop10(items){
+    const valid = validRateItems(items)
+        .sort((a,b) => Number(b.rate) - Number(a.rate));
+
+    const b1 = document.getElementById("top5-table-body");
+    const b2 = document.getElementById("top10-table-body");
+
+    if(!b1 || !b2) return;
+
+    b1.innerHTML = "";
+    b2.innerHTML = "";
+
+    valid.slice(0,10).forEach((item,index) => {
+        const tr = document.createElement("tr");
+        const isWoori = isWooriBank(item.bank);
+
+        const rankClass = index < 3
+            ? "bg-orange-100 text-orange-600"
+            : isWoori
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-600";
+
+        if(isWoori){
+            tr.innerHTML = `
+              <td colspan="4" class="py-1">
+                <div class="grid grid-cols-[15%_39%_21%_25%] items-center bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl py-2 px-2 mx-0.5">
+                  <div class="w-full text-center">
+                    <span class="${rankClass} w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold">${index+1}</span>
+                  </div>
+                  <div class="w-full text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</div>
+                  <div class="w-full text-center font-semibold">${Number(item.rate).toFixed(2)}%</div>
+                  <div class="w-full text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</div>
+                </div>
+              </td>`;
+        }else{
+            tr.innerHTML = `
+              <td class="py-2 text-center">
+                <span class="${rankClass} w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold">${index+1}</span>
+              </td>
+              <td class="py-2 text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</td>
+              <td class="py-2 text-center font-semibold text-blue-600">${Number(item.rate).toFixed(2)}%</td>
+              <td class="py-2 text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</td>`;
+        }
+
+        (index < 5 ? b1 : b2).appendChild(tr);
+    });
+
+    if(valid.length === 0){
+        const empty =
+            '<tr><td colspan="4" class="text-center py-4 text-gray-400">금리 공시 데이터 없음</td></tr>';
+
+        b1.innerHTML = empty;
+        b2.innerHTML = empty;
+    }
+
+    requestAnimationFrame(syncAIAnalysisCenterHeight);
+}
+
+
+function renderAlternativeSideCards(items){
+    const left = document.getElementById("rates-up-list");
+    const right = document.getElementById("rates-down-list");
+
+    if(!left || !right) return;
+
+    const valid = validRateItems(items)
+        .sort((a,b) => Number(b.rate) - Number(a.rate));
+
+    const woori = findWooriItem(valid);
+    const wooriRate = Number(woori?.rate);
+
+    // 공시일이 있는 기관 중 금리 높은 순
+    const recent = valid
+        .filter(item => item.disclosure_date)
+        .sort((a,b) => Number(b.rate) - Number(a.rate))
+        .slice(0,5);
+
+    const higher = Number.isFinite(wooriRate)
+        ? valid
+            .filter(item =>
+                Number(item.rate) > wooriRate &&
+                !isWooriBank(item.bank)
+            )
+            .slice(0,5)
+        : valid.slice(0,5);
+
+    left.innerHTML = recent.length
+        ? recent.map((item,index) => {
+            if(isWooriBank(item.bank)){
+                return `
+                  <tr>
+                    <td colspan="4" class="py-1">
+                      <div class="grid grid-cols-[14%_38%_22%_26%] items-center bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl py-2 px-2 mx-0.5">
+                        <div class="text-center">${index+1}</div>
+                        <div class="text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</div>
+                        <div class="text-center">${Number(item.rate).toFixed(2)}%</div>
+                        <div class="text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</div>
+                      </div>
+                    </td>
+                  </tr>`;
+            }
+
+            return `
+              <tr>
+                <td class="py-2 text-center text-gray-500">${index+1}</td>
+                <td class="py-2 text-center truncate px-1 text-gray-700" title="${item.bank}">${displayBankName(item.bank)}</td>
+                <td class="py-2 text-center font-semibold text-blue-700">${Number(item.rate).toFixed(2)}%</td>
+                <td class="py-2 text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</td>
+              </tr>`;
+          }).join("")
+        : '<tr><td colspan="4" class="py-4 text-center text-gray-400">공시일 데이터 없음</td></tr>';
+
+    right.innerHTML = higher.length
+        ? higher.map((item,index) => {
+            const gap = Number.isFinite(wooriRate)
+                ? Number(item.rate) - wooriRate
+                : null;
+
+            return `
+              <tr>
+                <td class="py-2 text-center text-gray-500">${index+1}</td>
+                <td class="py-2 text-center truncate px-1 text-gray-700" title="${item.bank}">${displayBankName(item.bank)}</td>
+                <td class="py-2 text-center font-semibold text-indigo-700">${Number(item.rate).toFixed(2)}%</td>
+                <td class="py-2 text-center font-semibold whitespace-nowrap">
+                  ${gap === null ? "-" : `<span class="text-blue-600">+${gap.toFixed(2)}%p</span>`}
+                </td>
+              </tr>`;
+          }).join("")
+        : '<tr><td colspan="4" class="py-4 text-center text-gray-400">우리금융보다 높은 기관 없음</td></tr>';
+
+    requestAnimationFrame(syncAIAnalysisCenterHeight);
+}
+
+
+function populateAlternativeProductBanks(items){
+    const s=document.getElementById("product-bank-select"); if(!s)return;
+    s.innerHTML='<option value="">전체 저축은행</option>';
+    [...new Set(items.map(productBankName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ko")).forEach(bank=>{const o=document.createElement("option");o.value=bank;o.textContent=bank;s.appendChild(o);});
+    s.dataset.loaded="1";
+}
+
+async function loadAlternativeMarket(mode=activeMarketProduct,requestId=marketModeRequestId){
+    const periodAtRequest=currentSelectedPeriod()||"12";
+    const items=await fetchAlternativeMarketItems(mode,periodAtRequest);
+
+    if(requestId!==marketModeRequestId || activeMarketProduct!==mode) return;
+
+    renderAlternativeHero(items);
+    renderAlternativeTop10(items);
+    renderAlternativeSideCards(items);
+
+    allProductData=items.map(normalizeMarketItem);
+    populateAlternativeProductBanks(allProductData);
+    updateProductSortOptions();
+    applyProductFilters();
+
+    if(requestId!==marketModeRequestId || activeMarketProduct!==mode) return;
+    await renderAIAnalysisCenter(aiCenterActiveTab||"market");
+    requestAnimationFrame(syncAIAnalysisCenterHeight);
+}
+
+async function switchMarketProduct(mode){
+    if(!MARKET_PRODUCT_CONFIG[mode]) return;
+
+    const requestId = ++marketModeRequestId;
+    activeMarketProduct = mode;
+    currentMarketPeriod = currentSelectedPeriod() || "12";
+
+    updateMarketProductTabs();
+    updateMarketProductLabels();
+    updateAlternativeHeaders();
+    updateProductSortOptions();
+
+    const bank = document.getElementById("product-bank-select");
+    if(bank){
+        bank.dataset.loaded = "0";
+        bank.innerHTML = '<option value="">전체 저축은행</option>';
+    }
+
+    if(mode === "deposit"){
+        // 직전 ISA/IRP HERO 제거
+        ["kpi-rank","kpi-woori-rate-mini","kpi-best-rate-mini","kpi-lowest-rate-mini",
+         "kpi-average-rate","kpi-product-count","kpi-change-count",
+         "wibee-woori-rate","wibee-best-rate","wibee-average-rate","wibee-rank"]
+        .forEach(id => setText(id, "-"));
+
+        ["kpi-highest-gap","kpi-lowest-gap","kpi-average-gap"]
+        .forEach(id => setHtml(id, "-"));
+
+        setText("wibee-rise-label","상승");
+        setText("wibee-fall-label","하락");
+        setText("wibee-change-label","전체변동");
+
+        // 정기예금 HERO는 loadHero()가 실제 담당하므로 반드시 호출
+        await Promise.all([
+            loadHero(),
+            fetchKPI(),
+            fetchWooriData(),
+            fetchAISummary(),
+            fetchWibeeBriefing(),
+            fetchRatesData(),
+            fetchFinancialData(),
+            fetchAllProducts()
+        ]);
+
+        if(requestId !== marketModeRequestId || activeMarketProduct !== "deposit"){
+            return;
+        }
+
+        // 화면 마지막 상태를 정기예금 데이터로 한 번 더 확정
+        await loadHero();
+
+        if(requestId !== marketModeRequestId || activeMarketProduct !== "deposit"){
+            return;
+        }
+
+        await renderAIAnalysisCenter(aiCenterActiveTab || "market");
+        requestAnimationFrame(syncAIAnalysisCenterHeight);
+        return;
+    }
+
+    await loadAlternativeMarket(mode, requestId);
+}
+
+
+function syncAIAnalysisCenterHeight(){
+    const mainColumn = document.querySelector("main.col-span-9");
+    const heroStart = document.getElementById("dashboard-hero-start");
+    const marketRow = document.getElementById("market-ranking-row");
+    const aiCenter = document.getElementById("ai-analysis-center");
+
+    if(!mainColumn || !heroStart || !marketRow || !aiCenter){
+        return;
+    }
+
+    const applyHeight = () => {
+        const mainRect = mainColumn.getBoundingClientRect();
+        const heroRect = heroStart.getBoundingClientRect();
+        const marketRect = marketRow.getBoundingClientRect();
+
+        // AI센터 시작 = HERO 시작
+        const topOffset = Math.max(
+            0,
+            Math.round(heroRect.top - mainRect.top)
+        );
+
+        // AI센터 종료 = TOP10 / TOP5 패널 하단
+        const exactHeight = Math.max(
+            0,
+            Math.round(marketRect.bottom - heroRect.top)
+        );
+
+        aiCenter.style.marginTop = `${topOffset}px`;
+        aiCenter.style.height = `${exactHeight}px`;
+        aiCenter.style.maxHeight = `${exactHeight}px`;
+        aiCenter.style.minHeight = `${exactHeight}px`;
+        aiCenter.style.overflow = "hidden";
+    };
+
+    requestAnimationFrame(applyHeight);
+
+    if(window.sbMarketRowResizeObserver){
+        window.sbMarketRowResizeObserver.disconnect();
+    }
+
+    window.sbMarketRowResizeObserver = new ResizeObserver(() => {
+        requestAnimationFrame(applyHeight);
+    });
+
+    window.sbMarketRowResizeObserver.observe(heroStart);
+    window.sbMarketRowResizeObserver.observe(marketRow);
+    window.sbMarketRowResizeObserver.observe(mainColumn);
+}
+
+function setupMarketProductTabs(){
+    document.querySelectorAll("[data-market-product]").forEach(b=>b.addEventListener("click",()=>switchMarketProduct(b.dataset.marketProduct)));
+    updateMarketProductTabs(); updateMarketProductLabels();
+    requestAnimationFrame(syncAIAnalysisCenterHeight);
+}
+
 /* ==========================================================
    DASHBOARD INITIALIZE
 ========================================================== */
@@ -55,6 +556,8 @@ function initDashboard() {
     console.log(
         "🔥 SBRateBot V5 Dashboard START"
     );
+
+    setupMarketProductTabs();
 
 
 
@@ -111,6 +614,10 @@ function initDashboard() {
     */
 
     fetchFinancialData();
+
+
+    /* AI ANALYSIS CENTER */
+    initAIAnalysisCenter();
 
 
     /*
@@ -654,7 +1161,7 @@ ${
 Number(
     marketWoori.average_gap || 0
 )
->= 0
+> 0
 
 ?
 
@@ -669,8 +1176,14 @@ Number(
 
 :
 
-`
+Number(
+    marketWoori.average_gap || 0
+)
+< 0
 
+?
+
+`
 <span class="text-red-600">
 ▲${Math.abs(
 Number(
@@ -679,7 +1192,14 @@ Number(
 )
 .toFixed(2)}%p
 </span>
+`
 
+:
+
+`
+<span class="text-gray-800">
+0.00%p
+</span>
 `
 
 }
@@ -1218,9 +1738,17 @@ function renderKPI(data){
             </span>
             `
             :
+            value > 0
+            ?
             `
             <span class="text-blue-600">
             +${value.toFixed(2)}%p
+            </span>
+            `
+            :
+            `
+            <span class="text-gray-800">
+            0.00%p
             </span>
             `;
 
@@ -1352,6 +1880,215 @@ function updateTime(time){
 }
 
 
+
+
+/* ==========================================================
+   HEADER LIVE TIME + DATA UPDATE TIME
+========================================================== */
+
+function formatKoreanCurrentDateTime(dateValue){
+    const d = dateValue instanceof Date ? dateValue : new Date(dateValue);
+
+    if(Number.isNaN(d.getTime())){
+        return "-";
+    }
+
+    const days = ["일","월","화","수","목","금","토"];
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    const hh = String(d.getHours()).padStart(2,"0");
+    const mi = String(d.getMinutes()).padStart(2,"0");
+    const ss = String(d.getSeconds()).padStart(2,"0");
+
+    return `${yyyy}-${mm}-${dd} (${days[d.getDay()]}) ${hh}:${mi}:${ss}`;
+}
+
+function extractTimeOnly(value){
+    if(!value){
+        return "-";
+    }
+
+    const text = String(value).trim();
+
+    const match = text.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if(match){
+        return `${String(match[1]).padStart(2,"0")}:${match[2]}`;
+    }
+
+    return text;
+}
+
+function startHeaderClock(){
+    const target = document.getElementById("header-current-datetime");
+    if(!target){
+        return;
+    }
+
+    const render = () => {
+        target.textContent = formatKoreanCurrentDateTime(new Date());
+    };
+
+    render();
+    window.setInterval(render, 1000);
+}
+
+function parseDashboardDateTime(value){
+    if(!value){
+        return null;
+    }
+
+    const raw = String(value).trim();
+
+    const match = raw.match(
+        /(\d{4})[-./](\d{1,2})[-./](\d{1,2})[^\d]+(\d{1,2}):(\d{2})(?::(\d{2}))?/
+    );
+
+    if(match){
+        return new Date(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3]),
+            Number(match[4]),
+            Number(match[5]),
+            Number(match[6] || 0)
+        );
+    }
+
+    const parsed = new Date(raw);
+
+    return Number.isNaN(parsed.getTime())
+        ? null
+        : parsed;
+}
+
+function formatDataBasis(value){
+    const parsed = parseDashboardDateTime(value);
+
+    if(parsed){
+        const yyyy = parsed.getFullYear();
+        const mm = String(parsed.getMonth()+1).padStart(2,"0");
+        const dd = String(parsed.getDate()).padStart(2,"0");
+        const hh = String(parsed.getHours()).padStart(2,"0");
+        const mi = String(parsed.getMinutes()).padStart(2,"0");
+
+        return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    return value
+        ? String(value)
+        : "-";
+}
+
+function renderDataFreshness(value){
+    const badge = document.getElementById("header-data-status");
+
+    if(!badge){
+        return;
+    }
+
+    badge.className =
+        "px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap";
+
+    const parsed = parseDashboardDateTime(value);
+
+    if(!parsed){
+        badge.textContent = "기준시각 확인";
+        badge.classList.add(
+            "bg-gray-100",
+            "text-gray-500",
+            "border",
+            "border-gray-200"
+        );
+        return;
+    }
+
+    const ageHours =
+        (Date.now() - parsed.getTime())
+        / (1000 * 60 * 60);
+
+    if(ageHours >= 24){
+        badge.textContent = "갱신 지연";
+        badge.classList.add(
+            "bg-orange-50",
+            "text-orange-700",
+            "border",
+            "border-orange-100"
+        );
+    }
+    else{
+        badge.textContent = "최신";
+        badge.classList.add(
+            "bg-emerald-50",
+            "text-emerald-700",
+            "border",
+            "border-emerald-100"
+        );
+    }
+}
+
+async function refreshHeaderDataUpdateTime(){
+    const target = document.getElementById("header-data-update-time");
+
+    if(!target){
+        return;
+    }
+
+    const kpi = await apiFetch("/api/kpi");
+
+    const value =
+        kpi?.last_updated ??
+        kpi?.last_update ??
+        kpi?.updated_at ??
+        null;
+
+    window.sbDataBasisValue = value;
+
+    target.textContent = formatDataBasis(value);
+    target.title = value
+        ? `데이터 기준일시: ${value}`
+        : "데이터 기준일시 정보 없음";
+
+    renderDataFreshness(value);
+
+    const reportBasis =
+        document.getElementById(
+            "ai-report-data-basis"
+        );
+
+    if(reportBasis){
+        reportBasis.textContent =
+            `데이터 기준 ${formatDataBasis(value)}`;
+    }
+}
+
+function setupHeaderRefresh(){
+    const btn = document.getElementById("header-refresh-btn");
+    if(!btn){
+        return;
+    }
+
+    btn.addEventListener("click", async () => {
+        btn.disabled = true;
+
+        try{
+            await Promise.all([
+                refreshHeaderDataUpdateTime(),
+                typeof fetchKPI === "function" ? fetchKPI() : Promise.resolve(),
+                typeof fetchRatesData === "function" ? fetchRatesData() : Promise.resolve(),
+                typeof fetchFinancialData === "function" ? fetchFinancialData() : Promise.resolve(),
+                typeof fetchWibeeBriefing === "function" ? fetchWibeeBriefing() : Promise.resolve()
+            ]);
+
+            if(typeof renderAIAnalysisCenter === "function"){
+                await renderAIAnalysisCenter(aiCenterActiveTab || "market");
+            }
+        }
+        finally{
+            btn.disabled = false;
+        }
+    });
+}
 
 /* ==========================================================
    WOORI MARKET POSITION
@@ -1811,8 +2548,10 @@ async function openAllRatesModal(){
         </tr>
     `;
 
-    const data = await apiFetch("/api/rates?all=1");
-    const items = Array.isArray(data) ? data : [];
+    const data = activeMarketProduct==="deposit" ? await apiFetch("/api/rates?all=1") : currentMarketItems;
+    const items = activeMarketProduct==="deposit"
+        ? (Array.isArray(data)?data:[])
+        : validRateItems(data).sort((a,b)=>Number(b.rate)-Number(a.rate));
 
     if(items.length === 0){
         tbody.innerHTML = `
@@ -2044,607 +2783,1268 @@ function renderRateChanges(
 
 
 /* ==========================================================
-   전체 상품 조회
+   전체 상품 조회 - V5 실제 데이터 연결
    /api/products
 ========================================================== */
 
+let allProductData = [];
 
-async function fetchAllProducts(
-    keyword=""
-){
+function productBankName(item){
+    return String(item.bank ?? item.kor_co_nm ?? item.bank_name ?? "").trim();
+}
 
+function productName(item){
+    return String(item.product ?? item.fin_prdt_nm ?? item.product_name ?? "").trim();
+}
 
-    let url =
-        "/api/products";
+function productPeriod(item){
+    const raw = item.period ?? item.save_trm ?? item.period_months ?? "";
+    const match = String(raw).match(/\d+/);
+    return match ? match[0] : String(raw || "");
+}
 
+function productRate(item){
+    const raw = item.rate ?? item.intr_rate2 ?? item.max_rate ?? item.intr_rate ?? item.base_rate;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+}
 
-    if(keyword){
+function productChange(item){
+    const raw = item.change ?? item.diff ?? item.change_value;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : 0;
+}
 
-        url +=
-        "?q="+
-        encodeURIComponent(keyword);
-
-    }
-
-
-
-    const data =
-        await apiFetch(url);
-
-
-
+async function fetchAllProducts(){
+    const data = await apiFetch("/api/products");
     if(!data){
+        renderAllProductsTable([]);
         return;
     }
 
+    allProductData = Array.isArray(data)
+        ? data
+        : (data.products || data.all_products || data.items || []);
 
-
-    renderAllProductsTable(
-
-        data.products ||
-        data.all_products ||
-        []
-
-    );
-
-
-
+    populateProductBankSelect(allProductData);
+    applyProductFilters();
 }
 
+function populateProductBankSelect(products){
+    const select = document.getElementById("product-bank-select");
+    if(!select || select.dataset.loaded === "1") return;
 
+    const banks = [...new Set(products.map(productBankName).filter(Boolean))]
+        .sort((a,b) => a.localeCompare(b, "ko"));
 
-function renderAllProductsTable(
-    products
-){
-
-
-    const tbody =
-        document.getElementById(
-            "all-products-table-body"
-        );
-
-
-    if(!tbody){
-        return;
-    }
-
-
-
-    tbody.innerHTML="";
-
-
-
-    if(products.length===0){
-
-        tbody.innerHTML =
-        `
-        <tr>
-        <td colspan="6"
-        class="empty-msg">
-        조회 상품 없음
-        </td>
-        </tr>
-        `;
-
-
-        return;
-
-    }
-
-
-
-    products.forEach(item=>{
-
-
-        const tr =
-            document.createElement(
-                "tr"
-            );
-
-
-        tr.innerHTML =
-        `
-
-        <td>
-
-        ${
-        item.category ||
-        item.type ||
-        "예금"
-        }
-
-        </td>
-
-
-
-        <td>
-
-        ${
-        item.kor_co_nm ||
-        item.bank_name ||
-        "-"
-        }
-
-        </td>
-
-
-
-        <td>
-
-        ${
-        item.fin_prdt_nm ||
-        item.product_name ||
-        "-"
-        }
-
-        </td>
-
-
-
-        <td>
-
-        ${
-        item.intr_rate !== undefined
-        ?
-        Number(item.intr_rate).toFixed(2)+"%"
-        :
-        item.base_rate
-        ?
-        Number(item.base_rate).toFixed(2)+"%"
-        :
-        "-"
-        }
-
-        </td>
-
-
-
-        <td>
-
-        <strong>
-
-        ${
-        item.intr_rate2 !== undefined
-        ?
-        Number(item.intr_rate2).toFixed(2)+"%"
-        :
-        item.max_rate
-        ?
-        Number(item.max_rate).toFixed(2)+"%"
-        :
-        "-"
-        }
-
-
-        </strong>
-
-        </td>
-
-
-
-        <td>
-
-        ${
-        item.save_trm ||
-        item.period_months ||
-        "-"
-        }
-
-        개월
-
-
-        </td>
-
-
-        `;
-
-
-
-        tbody.appendChild(tr);
-
-
+    banks.forEach(bank => {
+        const option = document.createElement("option");
+        option.value = bank;
+        option.textContent = bank;
+        select.appendChild(option);
     });
-
-
+    select.dataset.loaded = "1";
 }
 
-/* ==========================================================
-   Gemini AI Assistant
-   /api/ai/search
-========================================================== */
+function applyProductFilters(){
+    const bank = document.getElementById("product-bank-select")?.value?.trim() || "";
+    const period = document.getElementById("product-period-select")?.value?.trim() || "";
+    const sortMode = document.getElementById("product-sort-select")?.value || "rate_desc";
+    const keyword = document.getElementById("product-search-input")?.value?.trim().toLowerCase() || "";
 
-
-async function handleAISearch(event){
-
-
-    if(event){
-
-        event.preventDefault();
-
+    let filtered = [...allProductData];
+    if(bank) filtered = filtered.filter(item => productBankName(item) === bank);
+    if(period) filtered = filtered.filter(item => productPeriod(item) === period);
+    if(keyword){
+        filtered = filtered.filter(item => `${productBankName(item)} ${productName(item)}`.toLowerCase().includes(keyword));
     }
 
+    filtered.sort((a,b) => {
+        if(sortMode === "rate_asc"){
+            const diff =
+                (productRate(a) ?? Number.MAX_VALUE)
+                - (productRate(b) ?? Number.MAX_VALUE);
 
-    const input =
-        document.getElementById(
-            "ai-question"
-        )
-        ||
-        document.getElementById(
-            "ai-query-input"
-        );
-
-
-    const answerBox =
-        document.getElementById(
-            "ai-mini-answer"
-        );
-
-
-    if(!input){
-
-        console.log(
-            "AI 질문 입력창 없음"
-        );
-
-        return;
-
-    }
-
-
-    const query =
-        input.value.trim();
-
-
-    if(!query){
-
-        return;
-
-    }
-
-
-    if(answerBox){
-
-        answerBox.innerHTML =
-            `
-            <span class="text-gray-400">
-            AI가 분석 중입니다...
-            </span>
-            `;
-
-    }
-
-
-    try{
-
-
-        const response =
-            await fetch(
-                "/api/ai/search",
-                {
-
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                        "application/json"
-                    },
-
-                    body:
-                        JSON.stringify({
-                            question:query
-                        })
-
-                }
-            );
-
-
-        if(!response.ok){
-
-            throw new Error(
-                `AI API Error : ${response.status}`
-            );
-
+            return diff !== 0
+                ? diff
+                : productBankName(a).localeCompare(
+                    productBankName(b),
+                    "ko"
+                );
         }
 
+        if(sortMode === "change_desc"){
+            const diff =
+                Math.abs(productChange(b))
+                - Math.abs(productChange(a));
 
-        const data =
-            await response.json();
+            return diff !== 0
+                ? diff
+                : (productRate(b) ?? -1)
+                    - (productRate(a) ?? -1);
+        }
 
+        if(sortMode === "disclosure_desc"){
+            const diff=disclosureSortValue(b.disclosure_date)-disclosureSortValue(a.disclosure_date);
+            return diff!==0?diff:(productRate(b)??-1)-(productRate(a)??-1);
+        }
 
-        const answer =
-            data.answer ||
-            data.result ||
-            data.message ||
-            "분석 결과가 없습니다.";
+        if(sortMode === "bank_asc"){
+            const bankDiff =
+                productBankName(a).localeCompare(
+                    productBankName(b),
+                    "ko"
+                );
 
-        const normalizeAIAnswerHtml = (value) => {
-            let text = String(value ?? "")
-                .replace(/^\s*Gemini AI 답변\s*/i, "")
-                .replace(/^\s*제미나이 AI 답변\s*/i, "");
+            return bankDiff !== 0
+                ? bankDiff
+                : (productRate(b) ?? -1)
+                    - (productRate(a) ?? -1);
+        }
 
-            // API가 <span>, <br> 등을 엔티티로 반환한 경우 한 번 복원
-            if(/&lt;\/?(?:span|br|strong|b|div|p)\b/i.test(text)){
-                const textarea = document.createElement("textarea");
-                textarea.innerHTML = text;
-                text = textarea.value;
-            }
+        // 기본: 금리 높은순
+        // ISA/IRP 확장 시 disclosure_date 최신순 모드를
+        // 이 정렬 구조에 추가할 수 있도록 분리해 둠.
+        const diff =
+            (productRate(b) ?? -1)
+            - (productRate(a) ?? -1);
 
-            const template = document.createElement("template");
-            text = text
-                .replace(/\r\n/g, "\n")
-                .replace(/\n[ \t]*\n[ \t]*\n+/g, "\n\n");
-
-            template.innerHTML = text.replace(/\n/g, "<br>");
-            template.content.querySelectorAll("script, iframe, object, embed, style").forEach(el => el.remove());
-            template.content.querySelectorAll("*").forEach(el => {
-                [...el.attributes].forEach(attr => {
-                    if(/^on/i.test(attr.name)) el.removeAttribute(attr.name);
-                    if((attr.name === "href" || attr.name === "src") && /^javascript:/i.test(attr.value)) el.removeAttribute(attr.name);
-                });
-            });
-            return template.innerHTML;
-        };
-
-        const cleanAnswerHtml = normalizeAIAnswerHtml(answer);
-        const plainHolder = document.createElement("div");
-        plainHolder.innerHTML = cleanAnswerHtml;
-        const cleanAnswerText = plainHolder.innerText.trim();
-
-        window.sbLastAIQuestion = query;
-        window.sbLastAIAnswerText = cleanAnswerText;
-
-        const applyRateColors = (root) => {
-            root.querySelectorAll(".rate-change.increase").forEach(el => {
-                el.classList.add("text-blue-600", "font-semibold");
-            });
-            root.querySelectorAll(".rate-change.decrease").forEach(el => {
-                el.classList.add("text-red-600", "font-semibold");
-            });
-            root.querySelectorAll(".rate-change:not(.increase):not(.decrease)").forEach(el => {
-                el.classList.add("text-gray-500");
-            });
-        };
-
-        const decoratePlainRateChanges = (root) => {
-            const walker = document.createTreeWalker(
-                root,
-                NodeFilter.SHOW_TEXT
+        return diff !== 0
+            ? diff
+            : productBankName(a).localeCompare(
+                productBankName(b),
+                "ko"
             );
-            const nodes = [];
-            while(walker.nextNode()){
-                const node = walker.currentNode;
-                if(node.parentElement?.closest(".rate-change")) continue;
-                if(/[+▲]\s*\d+(?:\.\d+)?%p/.test(node.nodeValue || "")){
-                    nodes.push(node);
-                }
-            }
+    });
+    renderAllProductsTable(filtered);
+}
 
-            nodes.forEach(node => {
-                const text = node.nodeValue || "";
-                const frag = document.createDocumentFragment();
-                let last = 0;
-                const re = /([+▲])\s*(\d+(?:\.\d+)?)%p/g;
-                let match;
-                while((match = re.exec(text))){
-                    if(match.index > last){
-                        frag.appendChild(document.createTextNode(text.slice(last, match.index)));
-                    }
-                    const span = document.createElement("span");
-                    span.className = match[1] === "+"
-                        ? "rate-change increase text-blue-600 font-semibold"
-                        : "rate-change decrease text-red-600 font-semibold";
-                    span.textContent = `${match[1]}${match[2]}%p`;
-                    frag.appendChild(span);
-                    last = re.lastIndex;
-                }
-                if(last < text.length){
-                    frag.appendChild(document.createTextNode(text.slice(last)));
-                }
-                node.replaceWith(frag);
-            });
-        };
-
-        if(answerBox){
-            // 원문의 줄바꿈은 살리되, 과도한 빈 줄만 한 칸으로 축소
-            const miniTemplate = document.createElement("template");
-            miniTemplate.innerHTML = cleanAnswerHtml;
-            applyRateColors(miniTemplate.content);
-            decoratePlainRateChanges(miniTemplate.content);
-
-            const brs = [...miniTemplate.content.querySelectorAll("br")];
-            brs.forEach((br, idx) => {
-                const next = br.nextSibling;
-                if(next && next.nodeName === "BR"){
-                    const spacer = document.createElement("span");
-                    spacer.className = "block h-1";
-                    br.replaceWith(spacer);
-                    next.remove();
-                }
-            });
-
-            answerBox.innerHTML = miniTemplate.innerHTML;
+function renderAllProductsTable(products){
+    const tbody=document.getElementById("all-products-table-body");
+    const count=document.getElementById("product-result-count");
+    if(count)count.textContent=`${Number(products.length).toLocaleString()}개 조회`;
+    if(!tbody)return; tbody.innerHTML="";
+    if(!Array.isArray(products)||!products.length){tbody.innerHTML='<tr><td colspan="6" class="py-6 text-center text-gray-400">조회 결과가 없습니다.</td></tr>';return;}
+    products.forEach((item,index)=>{
+        const bank=productBankName(item)||"-", displayBank=displayBankName(bank), product=productName(item)||"-", period=productPeriod(item), rate=productRate(item), change=productChange(item), isW=bank.includes("우리금융");
+        let last='<span class="text-gray-400">-</span>';
+        if(activeMarketProduct==="deposit"){
+            if(change>0)last=`<span class="text-blue-600 font-semibold">+${change.toFixed(2)}%p</span>`;
+            else if(change<0)last=`<span class="text-red-600 font-semibold">▲${Math.abs(change).toFixed(2)}%p</span>`;
+            else last='<span class="text-gray-700">0.00%p</span>';
+        }else{
+            last=item.disclosure_date?`<span class="text-gray-600">${item.disclosure_date}</span>`:'<span class="text-gray-400">-</span>';
         }
-
-        // 상세보기에서도 증감 색상이 항상 유지되도록 저장본에도 클래스 보강
-        const detailTemplate = document.createElement("template");
-        detailTemplate.innerHTML = cleanAnswerHtml;
-        applyRateColors(detailTemplate.content);
-        decoratePlainRateChanges(detailTemplate.content);
-        window.sbLastAIAnswer = detailTemplate.innerHTML;
-
-
-        console.log(
-            "AI SEARCH RESULT",
-            data
-        );
-
-
-    }
-    catch(error){
-
-
-        console.error(
-            "AI Error:",
-            error
-        );
-
-
-        if(answerBox){
-
-            answerBox.innerHTML =
-                `
-                <span class="text-red-500">
-                AI 분석 요청 중 오류가 발생했습니다.
-                </span>
-                `;
-
-        }
-
-
-    }
-
-
+        const tr=document.createElement("tr"); if(isW)tr.className="bg-blue-50/70 font-bold text-blue-700";
+        tr.innerHTML=`<td class="py-2 text-center">${index+1}</td><td class="py-2 text-center truncate px-1" title="${bank}">${displayBank}</td><td class="py-2 text-left truncate px-2" title="${product}">${product}</td><td class="py-2 text-center">${period?`${period}개월`:"-"}</td><td class="py-2 text-center font-semibold">${rate!=null?rate.toFixed(2)+"%":"-"}</td><td class="py-2 text-center whitespace-nowrap">${last}</td>`;
+        tbody.appendChild(tr);
+    });
 }
-
-
-
-
-/* ==========================================================
-   Chat UI Helper
-========================================================== */
-
-
-function appendChatMessage(
-    message,
-    className
-){
-
-
-    const container =
-        document.getElementById(
-            "ai-chat-messages"
-        );
-
-
-    if(!container){
-        return null;
-    }
-
-
-
-    const id =
-        "chat-" + Date.now();
-
-
-
-    const div =
-        document.createElement(
-            "div"
-        );
-
-
-    div.id=id;
-
-
-    div.className =
-        `chat-bubble ${className}`;
-
-
-
-    div.textContent =
-        message;
-
-
-
-    container.appendChild(
-        div
-    );
-
-
-
-    container.scrollTop =
-        container.scrollHeight;
-
-
-
-    return id;
-
-
-}
-
-
-
-function removeChatMessage(id){
-
-
-    const target =
-        document.getElementById(
-            id
-        );
-
-
-    if(target){
-
-        target.remove();
-
-    }
-
-}
-
-
-
-/* ==========================================================
-   상품 검색
-========================================================== */
 
 
 function setupProductSearch(){
+    const input = document.getElementById("product-search-input");
+    const button = document.getElementById("product-search-btn");
+    const bankSelect = document.getElementById("product-bank-select");
+    const periodSelect = document.getElementById("product-period-select");
+    const sortSelect = document.getElementById("product-sort-select");
 
-
-    const input =
-        document.getElementById(
-            "product-search-input"
-        );
-
-
-
-    if(!input){
-        return;
-    }
-
-
-
-    input.addEventListener(
-        "keypress",
-
-        e=>{
-
-
-            if(e.key==="Enter"){
-
-
-                fetchAllProducts(
-                    input.value.trim()
-                );
-
-
+    if(input){
+        input.addEventListener("keydown", e => {
+            if(e.key === "Enter"){
+                e.preventDefault();
+                applyProductFilters();
             }
-
-
+        });
+    }
+    if(button) button.addEventListener("click", applyProductFilters);
+    if(bankSelect) bankSelect.addEventListener("change", applyProductFilters);
+    if(periodSelect) periodSelect.addEventListener("change", async()=>{
+        currentMarketPeriod=periodSelect.value||"12";
+        updateMarketProductLabels();
+        updateAlternativeHeaders();
+        if(activeMarketProduct==="deposit"){
+            applyProductFilters();
+        }else{
+            const requestId=++marketModeRequestId;
+            await loadAlternativeMarket(activeMarketProduct,requestId);
         }
-
-    );
-
-
+    });
+    if(sortSelect) sortSelect.addEventListener("change", applyProductFilters);
 }
 
 
+/* ==========================================================
+   AI 분석센터 V5 - 4탭 실제 데이터 연결
+========================================================== */
+
+let aiCenterActiveTab = "market";
+
+function aiCenterRate(value){
+    const n = Number(value);
+    return Number.isFinite(n) ? `${n.toFixed(2)}%` : "-";
+}
+
+function aiCenterGap(value){
+    const n = Number(value);
+    if(!Number.isFinite(n)) return '<span class="text-gray-500">-</span>';
+    if(n > 0) return `<span class="text-blue-600 font-bold">+${n.toFixed(2)}%p</span>`;
+    if(n < 0) return `<span class="text-red-600 font-bold">▲${Math.abs(n).toFixed(2)}%p</span>`;
+    return '<span class="text-gray-800 font-bold">0.00%p</span>';
+}
+
+function aiCenterChange(value){
+    const n = Number(value);
+    if(!Number.isFinite(n)) return '<span class="text-gray-400">-</span>';
+    if(n > 0) return `<span class="text-blue-600 font-semibold">+${n.toFixed(2)}%p</span>`;
+    if(n < 0) return `<span class="text-red-600 font-semibold">▲${Math.abs(n).toFixed(2)}%p</span>`;
+    return '<span class="text-gray-700 font-semibold">0.00%p</span>';
+}
+
+
+function escapeReportHtml(value){
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function closeAIExecutiveReport(){
+    const modal = document.getElementById("ai-report-modal");
+    if(!modal){
+        return;
+    }
+
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+}
+
+function buildExecutiveReportBase(data, dataBasis){
+    const {kpi, woori, rates, financial, changes} = data;
+
+    const top = rates[0] || {};
+    const financialTop = financial[0] || {};
+    const upCount = Number(changes.up_count ?? (changes.up_top5 || []).length ?? 0);
+    const downCount = Number(changes.down_count ?? (changes.down_top5 || []).length ?? 0);
+    const changeCount = Number(changes.change_count ?? kpi.change_count ?? 0);
+
+    const marketAvg = Number(kpi.average_rate);
+    const topRate = Number(top.rate ?? kpi.max_rate ?? kpi.highest_rate);
+    const wooriRate = Number(woori.rate);
+    const avgGap = Number(woori.average_gap ?? 0);
+
+    const marketSpread =
+        Number.isFinite(topRate) && Number.isFinite(marketAvg)
+            ? topRate - marketAvg
+            : null;
+
+    const wooriToTop =
+        Number.isFinite(wooriRate) && Number.isFinite(topRate)
+            ? wooriRate - topRate
+            : null;
+
+    const movementTone =
+        changeCount === 0
+            ? "금리 변동이 없어 시장은 안정적입니다."
+            : upCount > downCount
+                ? "상승 조정이 하락보다 우세해 상단 금리 경쟁을 점검할 필요가 있습니다."
+                : downCount > upCount
+                    ? "하락 조정이 상대적으로 우세해 시장금리 하향 움직임을 확인할 필요가 있습니다."
+                    : "상승·하락 조정이 혼재되어 개별사 움직임 확인이 필요합니다.";
+
+    const wooriTone =
+        avgGap > 0
+            ? `우리금융은 시장 평균보다 ${avgGap.toFixed(2)}%p 높은 수준입니다.`
+            : avgGap < 0
+                ? `우리금융은 시장 평균보다 ${Math.abs(avgGap).toFixed(2)}%p 낮아 경쟁력 점검이 필요합니다.`
+                : "우리금융은 시장 평균과 동일한 수준입니다.";
+
+    return `
+      <div id="executive-report-document" class="space-y-3 bg-white">
+
+        <!-- Report Header -->
+        <div class="rounded-xl overflow-hidden border border-blue-100">
+          <div class="bg-gradient-to-r from-[#0b4ea2] to-[#1a67d2] text-white px-4 py-3 flex items-end justify-between gap-4">
+            <div>
+              <div class="text-[10px] text-blue-100 tracking-[0.12em]">EXECUTIVE INTELLIGENCE</div>
+              <div class="text-[17px] font-bold mt-0.5">SBRateBot ${marketProductLabel()} 시장 브리핑</div>
+              <div class="text-[10px] text-blue-100 mt-1">${marketProductLabel()} ${currentSelectedPeriod()}개월 · 금융지주 저축은행 경쟁현황</div>
+            </div>
+            <div class="text-right text-[10px] leading-4 text-blue-100">
+              <div>데이터 기준 ${dataBasis}</div>
+              <div>생성 ${formatKoreanCurrentDateTime(new Date())}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2 p-3 bg-[#fbfdff] text-center">
+            <div class="er-metric">
+              <div class="er-metric-label">시장 평균</div>
+              <div class="er-metric-value">${aiCenterRate(kpi.average_rate)}</div>
+            </div>
+            <div class="er-metric">
+              <div class="er-metric-label">시장 최고</div>
+              <div class="er-metric-value text-blue-700">${aiCenterRate(top.rate ?? kpi.max_rate ?? kpi.highest_rate)}</div>
+            </div>
+            <div class="er-metric">
+              <div class="er-metric-label">우리금융</div>
+              <div class="er-metric-value">${aiCenterRate(woori.rate)}</div>
+            </div>
+            <div class="er-metric">
+              <div class="er-metric-label">금리 변동</div>
+              <div class="er-metric-value">${changeCount}건</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive Summary -->
+        <section class="er-section">
+          <div class="er-title">
+            <span>01 · Executive Summary</span>
+            <span class="text-[9px] text-blue-600">TODAY</span>
+          </div>
+          <div class="er-body space-y-2">
+            <div class="er-insight">
+              <b>${displayBankName(top.bank ?? "-")}</b>가 ${aiCenterRate(top.rate)}로 시장 상단을 형성하고 있으며,
+              시장 평균 대비 최고금리 스프레드는 ${marketSpread === null ? "-" : marketSpread.toFixed(2) + "%p"}입니다.
+              ${movementTone}
+            </div>
+            <div class="er-insight">
+              ${wooriTone}
+              시장순위 ${woori.market_rank ?? "-"}위, 금융지주 저축은행 내 ${woori.financial_rank ?? "-"}위이며
+              시장 최고금리 대비 ${wooriToTop === null ? "-" : aiCenterGap(wooriToTop)} 수준입니다.
+            </div>
+          </div>
+        </section>
+
+        <!-- Market + Woori -->
+        <div class="grid grid-cols-2 gap-3">
+          <section class="er-section">
+            <div class="er-title"><span>02 · 시장 현황</span><span>${Number(kpi.product_count || 0).toLocaleString()}개 상품</span></div>
+            <div class="er-body space-y-1.5 text-[11px]">
+              <div class="flex justify-between"><span class="text-gray-500">최고금리</span><b>${displayBankName(top.bank ?? "-")} ${aiCenterRate(top.rate)}</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">시장 평균</span><b>${aiCenterRate(kpi.average_rate)}</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">전일 변동</span><b>${changeCount}건</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">상승 / 하락</span><b><span class="text-blue-600">${upCount}</span> / <span class="text-red-600">${downCount}</span></b></div>
+            </div>
+          </section>
+
+          <section class="er-section">
+            <div class="er-title"><span>03 · 우리금융 경쟁력</span><span class="text-blue-600">${woori.market_rank ?? "-"}위</span></div>
+            <div class="er-body space-y-1.5 text-[11px]">
+              <div class="flex justify-between"><span class="text-gray-500">현재금리</span><b>${aiCenterRate(woori.rate)}</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">평균 대비</span><b>${aiCenterGap(woori.average_gap)}</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">시장순위</span><b>${woori.market_rank ?? "-"}위</b></div>
+              <div class="flex justify-between"><span class="text-gray-500">금융지주 순위</span><b>${woori.financial_rank ?? "-"}위</b></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Financial Group -->
+        <section class="er-section">
+          <div class="er-title">
+            <span>04 · 금융지주 저축은행 현황</span>
+            <span>선두 ${displayBankName(financialTop.bank ?? "-")} ${aiCenterRate(financialTop.rate)}</span>
+          </div>
+          <div class="er-body pt-1">
+            <div class="grid grid-cols-[34px_1fr_72px_72px] gap-2 px-2 py-1 text-[9px] text-gray-400">
+              <span>순위</span><span>저축은행</span><span class="text-right">금리</span><span class="text-right">전일比</span>
+            </div>
+            <div>
+              ${financial.slice(0,7).map(item=>{
+                  const isWoori = String(item.bank || "").includes("우리금융");
+                  return `<div class="er-row ${isWoori ? "bg-blue-50 text-blue-700 font-bold rounded-md" : ""}">
+                    <span>${item.rank ?? "-"}</span>
+                    <span>${displayBankName(item.bank ?? "-")}</span>
+                    <span class="text-right font-semibold">${aiCenterRate(item.rate)}</span>
+                    <span class="text-right">${aiCenterChange(item.change)}</span>
+                  </div>`;
+              }).join("") || '<div class="text-center text-gray-400 py-3">금융지주 저축은행 데이터 없음</div>'}
+            </div>
+          </div>
+        </section>
+
+        <!-- Movement -->
+        <section class="er-section">
+          <div class="er-title"><span>05 · 금리 변동 포인트</span><span>${changeCount}건</span></div>
+          <div class="er-body grid grid-cols-3 gap-2 text-center">
+            <div class="rounded-lg bg-blue-50 p-2"><div class="text-[9px] text-gray-400">상승</div><div class="text-sm font-bold text-blue-600">${upCount}건</div></div>
+            <div class="rounded-lg bg-red-50 p-2"><div class="text-[9px] text-gray-400">하락</div><div class="text-sm font-bold text-red-600">${downCount}건</div></div>
+            <div class="rounded-lg bg-gray-50 p-2"><div class="text-[9px] text-gray-400">전체 변동</div><div class="text-sm font-bold text-gray-800">${changeCount}건</div></div>
+          </div>
+        </section>
+
+        <!-- AI -->
+        <section id="executive-report-ai-section" class="er-section">
+          <div class="er-title"><span>06 · AI Executive View</span><span class="text-indigo-600">AI</span></div>
+          <div class="er-body">
+            <div id="executive-report-ai-text" class="text-gray-500 leading-[1.5]">
+              AI 종합 판단을 생성하고 있습니다...
+            </div>
+          </div>
+        </section>
+      </div>`;
+}
+
+async function openAIExecutiveReport(){
+    const modal = document.getElementById("ai-report-modal");
+    const content = document.getElementById("ai-report-content");
+
+    if(!modal || !content) return;
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    const dataBasis = formatDataBasis(window.sbDataBasisValue);
+    const data = await loadAIAnalysisCenterData();
+
+    // AI 응답과 무관하게 실제 API 데이터로 보고서 본문을 먼저 생성
+    content.innerHTML = buildExecutiveReportBase(data, dataBasis);
+
+    const basisEl = document.getElementById("ai-report-data-basis");
+    if(basisEl) basisEl.textContent = `데이터 기준 ${dataBasis}`;
+
+    const question =
+        `데이터 기준 ${dataBasis}. 정기예금 시장과 금융지주 저축은행 경쟁현황을 임원 관점에서 종합 판단해줘. 시장 평균 ${data.kpi.average_rate ?? "-"}%, 최고금리 ${data.kpi.max_rate ?? data.kpi.highest_rate ?? "-"}%, 우리금융 금리 ${data.woori.rate ?? "-"}%, 시장순위 ${data.woori.market_rank ?? "-"}위, 금융지주 순위 ${data.woori.financial_rank ?? "-"}위, 전일 변동 ${data.changes.change_count ?? 0}건이다. 핵심 리스크, 우리금융 시사점, 대응 포인트를 간결하게 작성해줘.`;
+
+    try{
+        const response = await fetch("/api/ai/search", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                question,
+                category: activeMarketProduct,
+                period: currentSelectedPeriod()
+            })
+        });
+
+        if(!response.ok) throw new Error(`AI Report API Error : ${response.status}`);
+
+        const result = await response.json();
+        const answer = result?.answer || result?.result || result?.response || result?.message || "";
+        const aiText = document.getElementById("executive-report-ai-text");
+
+        if(aiText){
+            const compactAnswer = String(answer || "")
+                .replace(/\r\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+
+            aiText.textContent = compactAnswer || "AI 추가 판단이 없어 데이터 기반 보고서만 표시합니다.";
+            aiText.className = compactAnswer
+                ? "text-gray-700 whitespace-pre-line leading-[1.45]"
+                : "text-gray-500";
+        }
+    }
+    catch(error){
+        console.error("AI REPORT ERROR:", error);
+        const aiText = document.getElementById("executive-report-ai-text");
+        if(aiText){
+            aiText.textContent = "AI 추가 판단을 불러오지 못했습니다. 위 데이터 기반 보고서는 정상적으로 사용할 수 있습니다.";
+            aiText.className = "text-gray-500";
+        }
+    }
+}
+
+function printExecutiveReport(){
+    const report = document.getElementById("executive-report-document");
+    if(!report) return;
+
+    const popup = window.open("", "_blank", "width=900,height=1000");
+    if(!popup) return;
+
+    popup.document.write(`
+      <!doctype html>
+      <html lang="ko">
+      <head>
+        <meta charset="utf-8">
+        <title>SBRateBot Executive Report</title>
+        <script src="https://cdn.tailwindcss.com"><\/script>
+        <style>
+          body{font-family:Arial,"Noto Sans KR",sans-serif;padding:32px;color:#1f2937}
+          @media print{body{padding:0}}
+        </style>
+      </head>
+      <body>${report.outerHTML}</body>
+      </html>
+    `);
+    popup.document.close();
+    popup.focus();
+    setTimeout(() => popup.print(), 700);
+}
+
+async function downloadExecutiveReportPDF(){
+    const report = document.getElementById("executive-report-document");
+    if(!report) return;
+
+    const basis = formatDataBasis(window.sbDataBasisValue).replace(/[: ]/g, "-");
+    const filename = `SBRateBot_Executive_Report_${basis}.pdf`;
+
+    if(typeof html2pdf === "undefined"){
+        alert("PDF 모듈을 불러오지 못했습니다. 출력 버튼에서 'PDF로 저장'을 선택해주세요.");
+        printExecutiveReport();
+        return;
+    }
+
+    const options = {
+        margin: [8,8,8,8],
+        filename,
+        image: {type:"jpeg", quality:0.98},
+        html2canvas: {scale:2, useCORS:true, backgroundColor:"#ffffff"},
+        jsPDF: {unit:"mm", format:"a4", orientation:"portrait"},
+        pagebreak: {mode:["avoid-all","css","legacy"]}
+    };
+
+    await html2pdf().set(options).from(report).save();
+}
+
+
+function closeAICenterDetail(){
+    const modal = document.getElementById("ai-center-detail-modal");
+    if(modal){
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+    }
+}
+
+function centerDetailFallback(tab, data){
+    const {kpi, woori, rates, financial, changes} = data;
+
+    if(activeMarketProduct !== "deposit"){
+        const label = marketProductLabel();
+        const collectedBanks = [...new Set(
+            currentMarketItems
+                .map(item => String(item.bank || "").trim())
+                .filter(Boolean)
+        )];
+
+        if(tab === "financial"){
+            const leader = financial[0] || {};
+            const gapToLeader =
+                Number.isFinite(Number(leader.rate)) &&
+                Number.isFinite(Number(woori.rate))
+                    ? Number(woori.rate) - Number(leader.rate)
+                    : null;
+
+            return `
+              <div class="space-y-3">
+                <div class="font-bold text-blue-700">${label} 금융지주 저축은행 심층 분석</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">우리금융 금리</div><div class="font-bold">${aiCenterRate(woori.rate)}</div></div>
+                  <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">시장순위</div><div class="font-bold">${woori.market_rank ?? "-"}위</div></div>
+                  <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">공시일</div><div class="font-bold text-[11px]">${woori.disclosure_date || "-"}</div></div>
+                </div>
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                  ${label} 기준 금융지주 선두 대비 격차는 ${gapToLeader === null ? "-" : aiCenterGap(gapToLeader)}이며,
+                  우리금융의 시장 평균 대비 수준은 ${aiCenterGap(woori.average_gap)}입니다.
+                </div>
+              </div>`;
+        }
+
+        if(tab === "change"){
+            const recent = Array.isArray(changes.recent_disclosures)
+                ? changes.recent_disclosures
+                : [];
+
+            return `
+              <div class="space-y-3">
+                <div class="font-bold text-blue-700">${label} 공시 심층 분석</div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                  <div class="bg-blue-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">공시일 확인</div><div class="font-bold text-blue-700">${recent.length}개</div></div>
+                  <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">수집기관</div><div class="font-bold">${collectedBanks.length}개</div></div>
+                  <div class="bg-amber-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">우리금융 공시</div><div class="font-bold text-[11px]">${woori.disclosure_date || "-"}</div></div>
+                </div>
+                <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                  ${label}은 전일 변동 대신 공시일과 현재 금리를 함께 비교해 경쟁사 움직임을 판단합니다.
+                </div>
+              </div>`;
+        }
+
+        return `
+          <div class="space-y-3">
+            <div class="font-bold text-blue-700">${label} 시장 심층 분석</div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">시장 평균</div><div class="font-bold">${aiCenterRate(kpi.average_rate)}</div></div>
+              <div class="bg-blue-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">최고금리</div><div class="font-bold text-blue-700">${aiCenterRate(kpi.max_rate ?? kpi.highest_rate)}</div></div>
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">수집기관</div><div class="font-bold">${collectedBanks.length}개</div></div>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              현재 TOP1은 ${displayBankName(rates[0]?.bank ?? "-")} ${aiCenterRate(rates[0]?.rate)}이며,
+              우리금융은 ${woori.market_rank ?? "-"}위 ${aiCenterRate(woori.rate)}입니다.
+            </div>
+          </div>`;
+    }
+
+
+    if(tab === "financial"){
+        const leader = financial[0] || {};
+        const gapToLeader =
+            Number.isFinite(Number(leader.rate)) &&
+            Number.isFinite(Number(woori.rate))
+                ? Number(woori.rate) - Number(leader.rate)
+                : null;
+
+        return `
+          <div class="space-y-3">
+            <div class="font-bold text-blue-700">금융지주 저축은행 심층 분석</div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">우리금융 금리</div><div class="font-bold">${aiCenterRate(woori.rate)}</div></div>
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">금융지주 순위</div><div class="font-bold">${woori.financial_rank ?? "-"}위</div></div>
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">선두 대비</div><div class="font-bold">${gapToLeader === null ? "-" : aiCenterGap(gapToLeader)}</div></div>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              우리금융의 금융지주 내 위치와 상위 금융지주 저축은행의 금리 조정 여부를 우선 확인합니다.
+              시장 평균 대비 경쟁력은 ${aiCenterGap(woori.average_gap)} 입니다.
+            </div>
+          </div>`;
+    }
+
+    if(tab === "change"){
+        const ups = Array.isArray(changes.up_top5) ? changes.up_top5 : [];
+        const downs = Array.isArray(changes.down_top5) ? changes.down_top5 : [];
+        return `
+          <div class="space-y-3">
+            <div class="font-bold text-blue-700">금리 변동 심층 분석</div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-blue-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">상승</div><div class="font-bold text-blue-600">${changes.up_count ?? ups.length}건</div></div>
+              <div class="bg-red-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">하락</div><div class="font-bold text-red-600">${changes.down_count ?? downs.length}건</div></div>
+              <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">전체변동</div><div class="font-bold">${changes.change_count ?? 0}건</div></div>
+            </div>
+            <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
+              전일 대비 실제 금리 변경 기관을 기준으로 방향성과 변동폭을 분석합니다.
+              변동이 없는 날에는 상승·하락 목록이 비어 있는 것이 정상입니다.
+            </div>
+          </div>`;
+    }
+
+    return `
+      <div class="space-y-3">
+        <div class="font-bold text-blue-700">시장 심층 분석</div>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">시장 평균</div><div class="font-bold">${aiCenterRate(kpi.average_rate)}</div></div>
+          <div class="bg-blue-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">최고금리</div><div class="font-bold text-blue-700">${aiCenterRate(kpi.max_rate ?? kpi.highest_rate)}</div></div>
+          <div class="bg-gray-50 rounded-xl p-3"><div class="text-[10px] text-gray-400">변동</div><div class="font-bold">${changes.change_count ?? kpi.change_count ?? 0}건</div></div>
+        </div>
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+          상위권 금리 수준, 시장 평균, 금리 변동 건수를 함께 확인해 시장 경쟁 강도를 판단합니다.
+          현재 TOP1은 ${displayBankName(rates[0]?.bank ?? "-")} ${aiCenterRate(rates[0]?.rate)} 입니다.
+        </div>
+      </div>`;
+}
+
+function centerDetailQuestion(tab, data){
+    const {kpi, woori, financial, changes} = data;
+    const basis = formatDataBasis(window.sbDataBasisValue);
+
+    if(activeMarketProduct !== "deposit"){
+        const label=marketProductLabel();
+        if(tab==="financial") return `데이터 기준 ${basis}. ${label} ${currentSelectedPeriod()}개월 기준 금융지주 저축은행 경쟁현황을 심층 분석해줘. 우리금융 금리 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위, 평균대비 ${woori.average_gap??0}%p이며 금융지주 현황은 ${JSON.stringify(financial.slice(0,10))}이다. 공시일과 금리격차 중심으로 대응 포인트를 작성해줘.`;
+        if(tab==="change") return `데이터 기준 ${basis}. ${label} 최근 공시 현황을 심층 분석해줘. 최근 공시 데이터는 ${JSON.stringify(changes.recent_disclosures||[])}이다. 우리금융 공시일과 경쟁사 공시 움직임을 중심으로 작성해줘.`;
+        return `데이터 기준 ${basis}. ${label} ${currentSelectedPeriod()}개월 시장을 심층 분석해줘. 평균 ${kpi.average_rate??"-"}%, 최고 ${kpi.max_rate??"-"}%, 우리금융 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위다. 상위권 경쟁강도와 우리금융 시사점을 작성해줘.`;
+    }
+
+    if(tab === "financial"){
+        return `데이터 기준 ${basis}. 금융지주 저축은행만 대상으로 우리금융의 경쟁력을 심층 분석해줘. 우리금융 금리 ${woori.rate ?? "-"}%, 금융지주 순위 ${woori.financial_rank ?? "-"}위, 시장 평균 대비 ${woori.average_gap ?? 0}%p이며 금융지주 현황 데이터는 ${JSON.stringify(financial.slice(0,10))}이다. 상위사 대비 GAP, 경쟁사 금리 조정, 우리금융 대응 포인트 순으로 분석해줘. 일반적인 AI 질문 답변이 아니라 이 데이터에 근거한 분석만 작성해줘.`;
+    }
+
+    if(tab === "change"){
+        return `데이터 기준 ${basis}. 오늘 저축은행 정기예금 금리 변동을 심층 분석해줘. 상승 ${changes.up_count ?? 0}건, 하락 ${changes.down_count ?? 0}건, 전체변동 ${changes.change_count ?? 0}건이며 상승 TOP5 ${JSON.stringify(changes.up_top5 || [])}, 하락 TOP5 ${JSON.stringify(changes.down_top5 || [])}이다. 변동 방향, 주요 기관, 우리금융에 미치는 시사점 순으로 작성해줘.`;
+    }
+
+    return `데이터 기준 ${basis}. 오늘 정기예금 시장을 심층 분석해줘. 시장 평균 ${kpi.average_rate ?? "-"}%, 최고금리 ${kpi.max_rate ?? kpi.highest_rate ?? "-"}%, 상품수 ${kpi.product_count ?? 0}개, 금리변동 ${changes.change_count ?? kpi.change_count ?? 0}건이다. 시장 수준, 상위권 경쟁 강도, 오늘의 체크포인트 순으로 데이터 기반 분석해줘.`;
+}
+
+async function openAICenterDetail(){
+    // AI 분석센터 상세는 일반 AI 답변 상세/시장 상세와 완전 분리
+    ["ai-detail-modal", "market-detail-modal"].forEach(id => {
+        const other = document.getElementById(id);
+        if(other){
+            other.classList.add("hidden");
+            other.classList.remove("flex");
+        }
+    });
+
+    const preview = document.getElementById("ai-detail-preview");
+    if(preview){
+        preview.style.display = "none";
+    }
+
+    const modal = document.getElementById("ai-center-detail-modal");
+    const content = document.getElementById("ai-center-detail-content");
+    const title = document.getElementById("ai-center-detail-title");
+    const subtitle = document.getElementById("ai-center-detail-subtitle");
+
+    if(!modal || !content) return;
+
+    const tab = aiCenterActiveTab || "market";
+    const selectedLabel = marketProductLabel();
+
+    const titles = activeMarketProduct === "deposit"
+        ? {
+            market: "📊 시장분석 상세",
+            financial: "🏦 금융지주 저축은행 상세",
+            change: "📈 변동분석 상세"
+          }
+        : {
+            market: `📊 ${selectedLabel} 시장분석 상세`,
+            financial: `🏦 ${selectedLabel} 금융지주 상세`,
+            change: `🗓️ ${selectedLabel} 공시분석 상세`
+          };
+
+    if(title) title.textContent = titles[tab] || "📊 AI 상세 분석";
+    if(subtitle) subtitle.textContent = "선택한 탭의 실제 데이터 기준 심층 분석";
+
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+    content.innerHTML = '<div class="py-10 text-center text-gray-400">실제 데이터를 불러와 심층 분석 중입니다...</div>';
+
+    const data = await loadAIAnalysisCenterData();
+
+    // API 장애가 있어도 데이터 기반 기본 분석은 반드시 표시
+    content.innerHTML = centerDetailFallback(tab, data) +
+        '<div id="ai-center-deep-ai" class="mt-4 border-t pt-4"><div class="text-gray-400">AI 심층 해석을 생성하고 있습니다...</div></div>';
+
+    try{
+        const response = await fetch("/api/ai/search", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                question: centerDetailQuestion(tab, data),
+                category: activeMarketProduct,
+                period: currentSelectedPeriod()
+            })
+        });
+
+        if(!response.ok) throw new Error(`AI API Error : ${response.status}`);
+
+        const result = await response.json();
+        const answer = result?.answer || result?.result || result?.message || "";
+        const aiBox = document.getElementById("ai-center-deep-ai");
+
+        if(aiBox){
+            aiBox.innerHTML = answer
+                ? `<div class="font-bold text-blue-700 mb-2">🤖 AI 심층 해석</div><div class="bg-gray-50 border border-gray-100 rounded-xl p-3 whitespace-pre-wrap">${escapeReportHtml(answer)}</div>`
+                : '<div class="text-gray-400">AI 추가 해석이 없어 기본 데이터 분석만 표시합니다.</div>';
+        }
+    }
+    catch(error){
+        console.error("AI CENTER DETAIL ERROR:", error);
+        const aiBox = document.getElementById("ai-center-deep-ai");
+        if(aiBox){
+            aiBox.innerHTML = '<div class="text-gray-400">AI 추가 해석을 불러오지 못해 기본 데이터 분석만 표시합니다.</div>';
+        }
+    }
+}
+
+async function initAIAnalysisCenter(){
+    const tabs = document.querySelectorAll("[data-ai-center-tab]");
+    if(!tabs.length) return;
+
+    tabs.forEach(button => {
+        button.addEventListener("click", () => {
+            aiCenterActiveTab = button.dataset.aiCenterTab || "market";
+            updateAIAnalysisCenterTabs();
+            renderAIAnalysisCenter(aiCenterActiveTab);
+        });
+    });
+
+    const sideDetailBtn = document.getElementById("ai-side-detail-btn");
+    if(sideDetailBtn){
+        sideDetailBtn.addEventListener("click", async event => {
+            event.preventDefault();
+            event.stopPropagation();
+            if(typeof event.stopImmediatePropagation === "function"){
+                event.stopImmediatePropagation();
+            }
+            await openAICenterDetail();
+        });
+    }
+
+    const centerDetailClose = document.getElementById("ai-center-detail-close");
+    if(centerDetailClose){
+        centerDetailClose.addEventListener("click", closeAICenterDetail);
+    }
+
+    const centerDetailModal = document.getElementById("ai-center-detail-modal");
+    if(centerDetailModal){
+        centerDetailModal.addEventListener("click", e => {
+            if(e.target === centerDetailModal){
+                closeAICenterDetail();
+            }
+        });
+    }
+
+    const reportBtn = document.getElementById("ai-report-btn");
+    if(reportBtn){
+        reportBtn.addEventListener("click", openAIExecutiveReport);
+    }
+
+    const reportPrint = document.getElementById("ai-report-print");
+    if(reportPrint){
+        reportPrint.addEventListener("click", printExecutiveReport);
+    }
+
+    const reportPdf = document.getElementById("ai-report-pdf");
+    if(reportPdf){
+        reportPdf.addEventListener("click", downloadExecutiveReportPDF);
+    }
+
+    const reportClose = document.getElementById("ai-report-close");
+    if(reportClose){
+        reportClose.addEventListener("click", closeAIExecutiveReport);
+    }
+
+    const reportModal = document.getElementById("ai-report-modal");
+    if(reportModal){
+        reportModal.addEventListener("click", e => {
+            if(e.target === reportModal){
+                closeAIExecutiveReport();
+            }
+        });
+    }
+
+    await renderAIAnalysisCenter("market");
+}
+
+function updateAIAnalysisCenterTabs(){
+    document.querySelectorAll("[data-ai-center-tab]").forEach(button => {
+        const active = button.dataset.aiCenterTab === aiCenterActiveTab;
+        button.className = active
+            ? "ai-center-tab bg-white text-blue-700 shadow-sm rounded-md py-1.5 font-bold"
+            : "ai-center-tab text-gray-500 rounded-md py-1.5 hover:text-blue-600";
+    });
+}
+
+async function loadAIAnalysisCenterData(){
+    if(activeMarketProduct==="deposit"){
+        const [kpi,woori,rates,financial,changes,ai]=await Promise.all([
+            apiFetch("/api/kpi"),apiFetch("/api/woori"),apiFetch("/api/rates?all=1"),apiFetch("/api/financial"),apiFetch("/api/rate-changes"),apiFetch("/api/ai")
+        ]);
+        return {kpi:kpi||{},woori:woori||{},rates:Array.isArray(rates)?rates:[],financial:Array.isArray(financial)?financial:[],changes:changes||{},ai:ai||{},mode:"deposit"};
+    }
+    if(!currentMarketItems.length)await fetchAlternativeMarketItems(activeMarketProduct,currentSelectedPeriod());
+    const items=currentMarketItems.map(normalizeMarketItem),s=buildAlternativeKPI(items),wi=s.woori||{};
+    const base=await apiFetch("/api/financial"),bf=Array.isArray(base)?base:[];
+    const cores=new Set(bf.map(i=>normalizeBankCore(i.bank??i.bank_name??i.kor_co_nm)));
+    let financial=s.valid.filter(i=>{const c=normalizeBankCore(i.bank);return [...cores].some(b=>b&&(c.includes(b)||b.includes(c)))});
+    if(!financial.length){const keys=["우리","KB","신한","하나","NH","IBK","BNK","DGB","한국투자"];financial=s.valid.filter(i=>keys.some(k=>normalizeBankCore(i.bank).includes(normalizeBankCore(k))))}
+    financial=financial.sort((a,b)=>Number(b.rate)-Number(a.rate)).map((i,x)=>({...i,rank:x+1,change:0}));
+    const recent=[...items].filter(i=>i.disclosure_date).sort((a,b)=>disclosureSortValue(b.disclosure_date)-disclosureSortValue(a.disclosure_date));
+    const kpi={average_rate:s.avg,max_rate:s.max,highest_rate:s.max,lowest_rate:s.min,product_count:items.length,change_count:recent.length};
+    const woori={...wi,market_rank:s.rank,market_total:s.total,average_gap:Number.isFinite(Number(wi.rate))&&Number.isFinite(s.avg)?Number(wi.rate)-s.avg:0,financial_rank:(financial.findIndex(i=>String(i.bank).includes("우리금융"))+1)||null};
+    return {kpi,woori,rates:s.valid.map((i,x)=>({...i,rank:x+1})),financial,changes:{change_count:recent.length,up_count:0,down_count:0,recent_disclosures:recent.slice(0,10)},ai:{summary:[]},mode:activeMarketProduct};
+}
+
+
+function renderAlternativeAIAnalysisCenter(tab,data){
+    const target = document.getElementById("ai-center-content");
+    if(!target) return;
+
+    const {kpi,woori,rates,financial,changes} = data;
+    const label = marketProductLabel();
+    const recent = Array.isArray(changes.recent_disclosures)
+        ? changes.recent_disclosures
+        : [];
+
+    const collectedBanks = [...new Set(
+        currentMarketItems
+            .map(item => String(item.bank || "").trim())
+            .filter(Boolean)
+    )];
+
+    if(tab === "financial"){
+        target.innerHTML = `
+        <div class="space-y-3">
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-blue-700">🏦 우리금융 경쟁력</span>
+              <span class="text-[10px] text-gray-400">${label} ${currentSelectedPeriod()}개월</span>
+            </div>
+
+            <div class="grid grid-cols-[1fr_1fr_1fr] gap-2 text-center">
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">순위</div>
+                <div class="font-bold text-blue-700">${woori.market_rank ?? "-"}위</div>
+              </div>
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">금리</div>
+                <div class="font-bold">${aiCenterRate(woori.rate)}</div>
+              </div>
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">공시일</div>
+                <div class="font-bold text-[11px]">${woori.disclosure_date || "-"}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border border-gray-100 rounded-xl p-3">
+            <div class="font-bold text-gray-700 mb-2">📋 금융지주 저축은행 현황</div>
+
+            <div class="grid grid-cols-[30px_1fr_60px_76px] gap-2 px-2 pb-1 text-[10px] text-gray-400 text-center">
+              <span>순위</span><span>저축은행</span><span>금리</span><span>공시일</span>
+            </div>
+
+            <div class="space-y-1">
+              ${financial.map(item => {
+                  const matched = currentMarketItems.find(x =>
+                      normalizeBankCore(x.bank) === normalizeBankCore(item.bank)
+                  );
+
+                  const disclosureDate =
+                      item.disclosure_date ||
+                      matched?.disclosure_date ||
+                      (
+                          String(item.bank || "").includes("하나")
+                              ? "미확인"
+                              : "-"
+                      );
+
+                  const isWoori = String(item.bank).includes("우리금융");
+
+                  return `
+                    <div class="grid grid-cols-[30px_1fr_60px_76px] gap-2 px-2 py-1.5 rounded-xl items-center
+                      ${isWoori ? "bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl" : "bg-gray-50"}">
+                      <span class="text-center">${item.rank}</span>
+                      <span class="truncate text-center">${displayBankName(item.bank)}</span>
+                      <span class="text-center">${aiCenterRate(item.rate)}</span>
+                      <span class="text-[10px] text-center">${disclosureDate}</span>
+                    </div>`;
+              }).join("") || '<div class="text-center text-gray-400 py-4">금융지주 데이터 없음</div>'}
+            </div>
+          </div>
+
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5">
+            <div class="font-bold text-indigo-700 mb-1">🧠 AI 금융지주 분석 포인트</div>
+            ${label} 기준 우리금융의 금융지주 내 위치, 상위사 금리 격차와 최근 공시일을 함께 점검합니다.
+          </div>
+        </div>`;
+        return;
+    }
+
+    if(tab === "change"){
+        target.innerHTML = `
+        <div class="space-y-3">
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-blue-50 rounded-lg p-2">
+              <div class="text-[10px] text-gray-400">공시일 확인</div>
+              <div class="text-lg font-bold text-blue-700">${recent.length}</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-2">
+              <div class="text-[10px] text-gray-400">수집기관</div>
+              <div class="text-lg font-bold">${collectedBanks.length}</div>
+            </div>
+            <div class="bg-amber-50 rounded-lg p-2">
+              <div class="text-[10px] text-gray-400">우리금융 공시</div>
+              <div class="text-sm font-bold">${woori.disclosure_date || "-"}</div>
+            </div>
+          </div>
+
+          <div class="border border-gray-100 rounded-xl p-3">
+            <div class="font-bold text-gray-700 mb-2">🗓️ 공시 현황</div>
+
+            <div class="grid grid-cols-[30px_1fr_64px_76px] gap-2 px-2 pb-1 text-[10px] text-gray-400 text-center">
+              <span>순위</span><span>저축은행</span><span>금리</span><span>공시일</span>
+            </div>
+
+            ${validRateItems(recent)
+                .sort((a,b) => Number(b.rate) - Number(a.rate))
+                .slice(0,7)
+                .map((item,index) => `
+                  <div class="grid grid-cols-[30px_1fr_64px_76px] gap-2 px-2 py-1.5 mb-1 items-center ${isWooriBank(item.bank) ? "bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl" : "bg-gray-50 rounded-lg"}">
+                    <span class="text-center text-gray-500">${index + 1}</span>
+                    <span class="truncate text-center">${displayBankName(item.bank)}</span>
+                    <span class="font-semibold text-center">${aiCenterRate(item.rate)}</span>
+                    <span class="text-xs font-normal text-gray-400 text-center whitespace-nowrap">${item.disclosure_date || "-"}</span>
+                  </div>`)
+                .join("") || '<div class="text-center text-gray-400 py-4">공시일 데이터 없음</div>'}
+          </div>
+
+          <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5">
+            <div class="font-bold text-amber-800 mb-1">💡 공시 모니터링</div>
+            ${label}은 전일변동 대신 공시일과 금리 수준을 함께 기준으로 최근 경쟁현황을 확인합니다.
+          </div>
+        </div>`;
+        return;
+    }
+
+    target.innerHTML = `
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-2 text-center">
+        <div class="bg-gray-50 rounded-lg p-2">
+          <div class="text-[10px] text-gray-400">시장 평균</div>
+          <div class="text-base font-bold">${aiCenterRate(kpi.average_rate)}</div>
+        </div>
+        <div class="bg-blue-50 rounded-lg p-2">
+          <div class="text-[10px] text-gray-400">최고금리</div>
+          <div class="text-base font-bold text-blue-700">${aiCenterRate(kpi.max_rate)}</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2">
+          <div class="text-[10px] text-gray-400">수집기관</div>
+          <div class="text-base font-bold">${collectedBanks.length}개</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-2">
+          <div class="text-[10px] text-gray-400">공시일 확인</div>
+          <div class="text-base font-bold">${changes.change_count ?? 0}개</div>
+        </div>
+      </div>
+
+      <div class="border border-gray-100 rounded-xl p-3">
+        <div class="font-bold text-gray-700 mb-2">🏦 전체 수집 저축은행</div>
+        <div class="flex flex-wrap gap-1.5">
+          ${collectedBanks.map(bank =>
+              `<span class="px-2 py-1 rounded-md bg-gray-50 border border-gray-100 text-[10px] text-gray-600">${displayBankName(bank)}</span>`
+          ).join("") || '<span class="text-gray-400">수집기관 없음</span>'}
+        </div>
+      </div>
+
+      <div class="border border-gray-100 rounded-xl p-3">
+        <div class="font-bold text-gray-700 mb-2">🏆 ${label} TOP5</div>
+        <div class="space-y-1.5">
+          ${rates.slice(0,5).map(item => `
+            <div class="flex justify-between bg-gray-50 rounded-lg px-2.5 py-2">
+              <span>${item.rank}. ${displayBankName(item.bank)}</span>
+              <span class="font-bold">${aiCenterRate(item.rate)}</span>
+            </div>`
+          ).join("")}
+        </div>
+      </div>
+
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] leading-5">
+        <div class="font-bold text-blue-700 mb-1">🧠 AI 시장 요약</div>
+        ${label} ${currentSelectedPeriod()}개월 금리와 공시일을 기준으로 상위권 경쟁과 우리금융 위치를 모니터링합니다.
+      </div>
+    </div>`;
+}
+
+
+async function renderAIAnalysisCenter(tab){
+    const target = document.getElementById("ai-center-content");
+    if(!target) return;
+    target.innerHTML = '<div class="py-10 text-center text-gray-400">분석 데이터를 불러오는 중입니다.</div>';
+
+    const data = await loadAIAnalysisCenterData();
+    const {kpi,woori,rates,financial,changes} = data;
+
+    if(activeMarketProduct !== "deposit"){
+        renderAlternativeAIAnalysisCenter(tab,data);
+        requestAnimationFrame(syncAIAnalysisCenterHeight);
+        return;
+    }
+
+    if(tab === "financial"){
+        const financialRank =
+            woori.financial_rank ??
+            financial.findIndex(item =>
+                String(item.bank || "").includes("우리금융")
+            ) + 1;
+
+        target.innerHTML = `
+        <div class="space-y-3">
+
+          <!-- 기존 우리금융 경쟁력 미니패널 유지 -->
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-blue-700">🏦 우리금융 경쟁력</span>
+              <span class="text-[10px] text-gray-400">12개월 기준</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">시장순위</div>
+                <div class="font-bold text-blue-700 text-sm">${woori.market_rank ?? "-"}위</div>
+              </div>
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">현재금리</div>
+                <div class="font-bold text-gray-800 text-sm">${aiCenterRate(woori.rate)}</div>
+              </div>
+              <div class="bg-white rounded-lg py-2 border border-blue-50">
+                <div class="text-[10px] text-gray-400">평균금리 대비</div>
+                <div class="text-sm">${aiCenterGap(woori.average_gap)}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 금융지주 저축은행 현황 -->
+          <div class="border border-gray-100 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-bold text-gray-700">📋 금융지주 저축은행 현황</span>
+              <span class="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-full">우리금융 ${Number(financialRank) > 0 ? financialRank : "-"}위</span>
+            </div>
+            <div class="grid grid-cols-[34px_1fr_62px_70px] gap-2 px-2 pb-1 text-[10px] text-gray-400 text-center">
+              <span>순위</span><span class="text-left">저축은행</span><span>금리</span><span>전일比</span>
+            </div>
+            <div class="space-y-1">
+              ${financial.map(item=>{
+                  const isWoori = String(item.bank || "").includes("우리금융");
+                  return `<div class="grid grid-cols-[34px_1fr_62px_70px] gap-2 items-center rounded-lg px-2 py-1.5 ${isWoori ? "bg-blue-50 border border-blue-100 text-blue-700 font-bold" : "bg-gray-50"}">
+                    <span class="text-center">${item.rank ?? "-"}</span>
+                    <span class="truncate">${displayBankName(item.bank ?? "-")}</span>
+                    <span class="font-bold text-center">${aiCenterRate(item.rate)}</span>
+                    <span class="text-center">${aiCenterChange(item.change)}</span>
+                  </div>`;
+              }).join("") || '<div class="text-gray-400 text-center py-4">금융지주 저축은행 데이터 없음</div>'}
+            </div>
+          </div>
+
+          <!-- 경쟁사 AI 분석을 금융지주 탭으로 통합 -->
+          <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5">
+            <div class="font-bold text-indigo-700 mb-1">🧠 AI 금융지주 저축은행 분석</div>
+            금융지주 저축은행의 금리 순위와 전일 변동을 기준으로 우리금융의 경쟁 위치를 점검합니다.
+            상위 금융지주 저축은행과의 금리 격차 및 경쟁사의 금리 조정 여부를 함께 모니터링합니다.
+          </div>
+        </div>`;
+        return;
+    }
+
+    if(tab === "change"){
+        const ups = Array.isArray(changes.up_top5)?changes.up_top5:[];
+        const downs = Array.isArray(changes.down_top5)?changes.down_top5:[];
+        target.innerHTML = `
+        <div class="space-y-3">
+          <div class="grid grid-cols-3 gap-2 text-center"><div class="bg-blue-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">상승</div><div class="text-lg font-bold text-blue-600">${changes.up_count ?? ups.length}</div></div><div class="bg-red-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">하락</div><div class="text-lg font-bold text-red-500">${changes.down_count ?? downs.length}</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">전체변동</div><div class="text-lg font-bold text-gray-700">${changes.change_count ?? 0}</div></div></div>
+          <div class="grid grid-cols-2 gap-2"><div class="border border-blue-100 rounded-xl p-2.5"><div class="font-bold text-blue-600 mb-2">📈 상승 TOP5</div><div class="space-y-1">${ups.length?ups.map(item=>`<div class="flex justify-between bg-blue-50/50 rounded px-2 py-1.5"><span class="truncate mr-2">${displayBankName(item.bank ?? "-")}</span><span>${aiCenterChange(item.change)}</span></div>`).join(""):'<div class="text-gray-400 py-4 text-center">상승 없음</div>'}</div></div><div class="border border-red-100 rounded-xl p-2.5"><div class="font-bold text-red-500 mb-2">📉 하락 TOP5</div><div class="space-y-1">${downs.length?downs.map(item=>`<div class="flex justify-between bg-red-50/50 rounded px-2 py-1.5"><span class="truncate mr-2">${displayBankName(item.bank ?? "-")}</span><span>${aiCenterChange(item.change)}</span></div>`).join(""):'<div class="text-gray-400 py-4 text-center">하락 없음</div>'}</div></div></div>
+          <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5"><div class="font-bold text-amber-800 mb-1">💡 변동 판단</div>전일 대비 실제 금리 변경 은행만 표시합니다. 변동이 없는 날에는 상승·하락 목록이 비어 있는 것이 정상입니다.</div>
+        </div>`;
+        return;
+    }
+
+    const summary = Array.isArray(data.ai.summary)?data.ai.summary:[];
+    target.innerHTML = `
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-2 text-center"><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">시장 평균</div><div class="text-base font-bold">${aiCenterRate(kpi.average_rate)}</div></div><div class="bg-blue-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">최고금리</div><div class="text-base font-bold text-blue-700">${aiCenterRate(kpi.max_rate ?? kpi.highest_rate)}</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">상품수</div><div class="text-base font-bold">${Number(kpi.product_count || 0).toLocaleString()}개</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">금리변동</div><div class="text-base font-bold">${changes.change_count ?? kpi.change_count ?? 0}건</div></div></div>
+      <div class="border border-gray-100 rounded-xl p-3"><div class="font-bold text-gray-700 mb-2">🏆 시장 TOP5</div><div class="space-y-1.5">${rates.slice(0,5).map(item=>`<div class="flex justify-between bg-gray-50 rounded-lg px-2.5 py-2"><span>${item.rank ?? "-"}. ${displayBankName(item.bank ?? "-")}</span><span class="font-bold">${aiCenterRate(item.rate)}</span></div>`).join("") || '<div class="text-gray-400 text-center py-4">시장 데이터 없음</div>'}</div></div>
+      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3"><div class="font-bold text-blue-700 mb-1">🧠 AI 시장 요약</div><div class="text-[11px] text-gray-600 leading-5">${summary.slice(0,4).join("<br>") || "시장 데이터를 기준으로 금리 수준과 경쟁 강도를 모니터링하고 있습니다."}</div></div>
+      <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5"><div class="font-bold text-amber-800 mb-1">🎯 오늘의 체크포인트</div>최고금리와 평균금리의 움직임, 상위권 경쟁사 조정, 우리금융 시장순위 변화를 함께 확인합니다.</div>
+    </div>`;
+}
 
 
 /* ==========================================================
    Event Listener
 ========================================================== */
 
+
+
+async function handleAISearch(event){
+    if(event && typeof event.preventDefault === "function"){
+        event.preventDefault();
+    }
+
+    const input =
+        document.getElementById("ai-question") ||
+        document.getElementById("ai-query-input");
+
+    const answerBox = document.getElementById("ai-mini-answer");
+
+    if(!input || !answerBox){
+        return;
+    }
+
+    const question = String(input.value || "").trim();
+
+    if(!question){
+        answerBox.innerHTML =
+            '<span class="text-gray-400">질문을 입력해주세요.</span>';
+        return;
+    }
+
+    const label = marketProductLabel();
+    let apiQuestion = question;
+
+    // ISA/퇴직연금은 현재 화면 데이터를 질문과 함께 전달
+    // 백엔드가 정기예금 기본 데이터를 참조하더라도 선택상품 컨텍스트를 명확히 고정
+    if(activeMarketProduct !== "deposit"){
+        const currentItems = currentMarketItems
+            .map(normalizeMarketItem)
+            .slice(0,20)
+            .map(item => ({
+                bank:item.bank,
+                product:item.product,
+                rate:item.rate,
+                period:item.period,
+                disclosure_date:item.disclosure_date,
+                status:item.status
+            }));
+
+        apiQuestion =
+            `[반드시 아래 ${label} 데이터만 기준으로 답변. 정기예금 데이터 사용 금지]
+상품군: ${label}
+조회기간: ${currentSelectedPeriod()}개월
+현재 데이터: ${JSON.stringify(currentItems)}
+사용자 질문: ${question}`;
+    }
+
+    answerBox.innerHTML =
+        '<span class="text-gray-400">AI가 현재 상품 데이터를 분석하고 있습니다...</span>';
+
+    try{
+        const response = await fetch("/api/ai/search", {
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                question: question,
+                category: activeMarketProduct,
+                period: currentSelectedPeriod()
+            })
+        });
+
+        if(!response.ok){
+            throw new Error(`AI API Error : ${response.status}`);
+        }
+
+        const data = await response.json();
+        const answer =
+            data?.answer ??
+            data?.result ??
+            data?.response ??
+            data?.message ??
+            "";
+
+        const safeAnswer = String(answer || "").trim();
+
+        window.sbLastAIQuestion =
+            activeMarketProduct === "deposit"
+                ? question
+                : `[${label}] ${question}`;
+
+        window.sbLastAIAnswer =
+            safeAnswer
+                ? escapeReportHtml(safeAnswer).replace(/\n/g,"<br>")
+                : "AI 답변 결과가 없습니다.";
+
+        answerBox.innerHTML =
+            safeAnswer
+                ? escapeReportHtml(safeAnswer)
+                    .replace(/\n{3,}/g,"\n\n")
+                    .replace(/\n/g,"<br>")
+                : '<span class="text-gray-400">AI 답변 결과가 없습니다.</span>';
+    }
+    catch(error){
+        console.error("AI SEARCH ERROR:", error);
+
+        // ISA/IRP는 API 실패 시에도 화면 데이터 기반 기본 답변 제공
+        if(activeMarketProduct !== "deposit"){
+            const valid = validRateItems(currentMarketItems)
+                .sort((a,b) => Number(b.rate)-Number(a.rate));
+
+            const woori = findWooriItem(valid);
+            const top = valid[0];
+            const fallback =
+                `${label} ${currentSelectedPeriod()}개월 기준으로 `
+                + `현재 ${currentMarketItems.length}개 기관을 수집 중이며, `
+                + `최고금리는 ${top ? `${displayBankName(top.bank)} ${Number(top.rate).toFixed(2)}%` : "확인되지 않았습니다"}. `
+                + `우리금융은 ${woori ? `${Number(woori.rate).toFixed(2)}%` : "금리 확인 필요"}입니다.`;
+
+            window.sbLastAIQuestion = `[${label}] ${question}`;
+            window.sbLastAIAnswer = escapeReportHtml(fallback);
+            answerBox.textContent = fallback;
+            return;
+        }
+
+        answerBox.innerHTML =
+            '<span class="text-red-500">AI 답변을 불러오지 못했습니다.</span>';
+    }
+}
 
 function setupEventListeners(){
 
@@ -2768,8 +4168,8 @@ function setupEventListeners(){
                                 "우리금융":
                                     "우리금융 경쟁력은",
 
-                                "경쟁사":
-                                    "경쟁사 현황 알려줘"
+                                "금융지주 저축은행":
+                                    "금융지주 저축은행 현황 알려줘"
 
                             };
 
@@ -2836,6 +4236,11 @@ window.addEventListener(
     "load",
 
     ()=>{
+        startHeaderClock();
+        refreshHeaderDataUpdateTime();
+        setupHeaderRefresh();
+
+
 
 
         fetchAllProducts();

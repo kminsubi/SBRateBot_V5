@@ -6,9 +6,76 @@
   <title>우리금융저축은행 수신 모니터링 현황</title>
   <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <link rel="stylesheet" href="/static/css/dashboard.css">
 <script defer src="/static/js/dashboard.js"></script>
+
+
+<style>
+  /* ===== Executive Report compact visual ===== */
+  #executive-report-document{
+    font-family: "Pretendard","Noto Sans KR",Arial,sans-serif;
+  }
+  #executive-report-document .er-section{
+    border:1px solid #e8edf5;
+    border-radius:12px;
+    background:#fff;
+    overflow:hidden;
+  }
+  #executive-report-document .er-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 11px;
+    background:#f8fafc;
+    border-bottom:1px solid #eef2f7;
+    font-size:11px;
+    font-weight:700;
+    color:#25324a;
+  }
+  #executive-report-document .er-body{
+    padding:9px 11px;
+  }
+  #executive-report-document .er-metric{
+    border:1px solid #edf1f6;
+    border-radius:10px;
+    padding:8px 6px;
+    background:#fff;
+  }
+  #executive-report-document .er-metric-label{
+    font-size:9px;
+    color:#8b95a7;
+    margin-bottom:2px;
+  }
+  #executive-report-document .er-metric-value{
+    font-size:15px;
+    font-weight:800;
+    color:#202b3c;
+    line-height:1.1;
+  }
+  #executive-report-document .er-row{
+    display:grid;
+    grid-template-columns:34px 1fr 72px 72px;
+    gap:8px;
+    align-items:center;
+    padding:5px 7px;
+    border-top:1px solid #f1f4f8;
+    font-size:10.5px;
+  }
+  #executive-report-document .er-row:first-child{border-top:0}
+  #executive-report-document .er-insight{
+    border-left:3px solid #1a58c8;
+    background:#f6f9ff;
+    border-radius:8px;
+    padding:8px 10px;
+    line-height:1.45;
+  }
+  @media print{
+    #executive-report-document{font-size:10pt}
+    #executive-report-document .er-section{break-inside:avoid}
+  }
+</style>
 
 </head>
 <body class="bg-[#f4f6f9] text-gray-800 font-sans min-h-screen">
@@ -29,16 +96,13 @@
     </div>
 
     <div class="flex items-center gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-1">
-        <span>⏱️ 데이터 업데이트</span>
-        <span class="font-semibold text-gray-700">00:31</span>
-        <button class="hover:rotate-180 transition-transform duration-300 ml-1">🔄</button>
+      <div class="flex items-center gap-1.5">
+        <span>⏱️ 데이터 기준</span>
+        <span id="header-data-update-time" class="font-semibold text-gray-700 whitespace-nowrap">-</span>
+        <span id="header-data-status" class="hidden px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">-</span>
+        <button id="header-refresh-btn" type="button" title="데이터 새로고침" class="hover:rotate-180 transition-transform duration-300 ml-1">🔄</button>
       </div>
-      <div>2026-07-25 (금) 00:31</div>
-      <div class="flex items-center gap-1 font-medium text-gray-700 ml-2">
-        <span>🔔</span>
-        <span>홍길동 대리 🔽</span>
-      </div>
+      <div id="header-current-datetime" title="현재 시각">-</div>
     </div>
   </header>
 
@@ -48,9 +112,14 @@
     <!-- 좌측 메인 영역 (9컬럼) -->
     <main class="col-span-9 space-y-5">
 
-      <!-- 서브 탭 -->
-      <div>
-        <span class="bg-[#1a58c8] text-white text-xs px-3 py-1.5 rounded-md font-medium inline-flex items-center gap-1 shadow-sm">
+      <!-- 상품군 전환 -->
+      <div class="flex items-center justify-start gap-3 flex-wrap">
+        <div id="market-product-tabs" class="inline-flex shadow-sm items-center gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
+          <button type="button" data-market-product="deposit" class="market-product-tab bg-[#1a58c8] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm">정기예금</button>
+          <button type="button" data-market-product="isa" class="market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700">ISA</button>
+          <button type="button" data-market-product="irp" class="market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700">퇴직연금(IRP)</button>
+        </div>
+        <span id="dashboard-market-label" class="bg-[#eef5ff] border border-blue-200 text-blue-800 text-[11px] px-3 py-2 rounded-lg font-bold shadow-sm whitespace-nowrap">
           📌 저축은행 정기예금(12개월) 시장현황
         </span>
       </div>
@@ -599,8 +668,8 @@ class="text-xs text-gray-600 leading-5">
             id="ai-question"
             type="text"
             value=""
-            placeholder="ex. 우리금융 경쟁력은 어때?"
-            class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 placeholder:font-normal focus:outline-none focus:border-blue-500"
+            placeholder="(예시) 금융지주 저축은행 금리 알려줘"
+            class="flex-1 min-w-0 border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-700 placeholder:text-gray-500 placeholder:font-normal focus:outline-none focus:border-blue-500"
           />
 
           <button
@@ -615,7 +684,7 @@ class="text-xs text-gray-600 leading-5">
         <div class="flex flex-wrap gap-1 mt-3">
           <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">시장현황</button>
           <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">우리금융 경쟁력</button>
-          <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">경쟁사</button>
+          <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">금융지주 저축은행</button>
           <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">금리 TOP10</button>
           <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">금리변동</button>
           <button type="button" class="ai-quick-btn bg-white border border-gray-200 px-2 py-0.5 rounded text-[10px] hover:border-blue-300 hover:text-blue-600">우리금융보다 높은 곳</button>
@@ -656,14 +725,14 @@ class="text-xs text-gray-600 leading-5">
 </div>
 
       <!-- 순위 및 변동현황 -->
-      <div class="grid grid-cols-4 gap-4">
+      <div id="market-ranking-row" class="grid grid-cols-4 gap-4">
 
         <!-- 시장 TOP10 : 단일 패널 -->
         <div class="col-span-2 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
           <div class="flex justify-between items-center mb-3">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-gray-800">🏆 시장 TOP10</span>
-              <span class="text-[10px] text-gray-400">정기예금 12개월 · 최고금리 기준</span>
+              <span id="market-top10-title" class="text-xs font-bold text-gray-800">🏆 시장 TOP10</span>
+              <span id="market-top10-meta" class="text-[10px] text-gray-400">정기예금 12개월 · 최고금리 기준</span>
             </div>
             <button id="top10-all-btn" type="button" class="text-[11px] text-blue-600 font-medium hover:underline">전체 &gt;</button>
           </div>
@@ -678,7 +747,7 @@ class="text-xs text-gray-600 leading-5">
                   <th class="pb-1 font-normal text-center w-[12%]">순위</th>
                   <th class="pb-1 font-normal text-center w-[40%]">저축은행</th>
                   <th class="pb-1 font-normal text-center w-[22%]">금리</th>
-                  <th class="pb-1 font-normal text-center w-[26%]">전일比</th>
+                  <th id="market-top10-col4" class="pb-1 font-normal text-center w-[26%]">전일比</th>
                 </tr>
               </thead>
               <tbody id="top5-table-body" class="divide-y divide-gray-50">
@@ -694,7 +763,7 @@ class="text-xs text-gray-600 leading-5">
                   <th class="pb-1 font-normal text-center w-[12%]">순위</th>
                   <th class="pb-1 font-normal text-center w-[40%]">저축은행</th>
                   <th class="pb-1 font-normal text-center w-[22%]">금리</th>
-                  <th class="pb-1 font-normal text-center w-[26%]">전일比</th>
+                  <th id="market-top10-col4-right" class="pb-1 font-normal text-center w-[26%]">전일比</th>
                 </tr>
               </thead>
               <tbody id="top10-table-body" class="divide-y divide-gray-50">
@@ -708,59 +777,121 @@ class="text-xs text-gray-600 leading-5">
 
         <!-- 상승 TOP5 -->
         <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-          <div class="mb-3 text-xs font-bold text-blue-600 flex items-center gap-1">📈 상승 TOP5</div>
+          <div id="market-left-card-title" class="mb-3 text-xs font-bold text-blue-600 flex items-center gap-1">📈 상승 TOP5</div>
           <table class="w-full text-xs">
             <thead>
               <tr class="text-gray-400 border-b text-left">
-                <th class="pb-1 font-normal text-center w-[18%]">순위</th>
-                <th class="pb-1 font-normal text-center w-[52%]">저축은행</th>
-                <th class="pb-1 font-normal text-center w-[30%]">전일比</th>
+                <th class="pb-1 font-normal text-center w-[14%]">순위</th>
+                <th class="pb-1 font-normal text-center w-[38%]">저축은행</th>
+                <th class="pb-1 font-normal text-center w-[22%]">금리</th>
+                <th id="market-left-col4" class="pb-1 font-normal text-center w-[26%]">전일比</th>
               </tr>
             </thead>
             <tbody id="rates-up-list" class="divide-y divide-gray-50 text-blue-600 font-medium">
-              <tr><td colspan="3" class="py-4 text-center text-gray-400">데이터 로딩 중</td></tr>
+              <tr><td colspan="4" class="py-4 text-center text-gray-400">데이터 로딩 중</td></tr>
             </tbody>
           </table>
         </div>
 
         <!-- 하락 TOP5 -->
         <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-          <div class="mb-3 text-xs font-bold text-red-500 flex items-center gap-1">📉 하락 TOP5</div>
+          <div id="market-right-card-title" class="mb-3 text-xs font-bold text-red-500 flex items-center gap-1">📉 하락 TOP5</div>
           <table class="w-full text-xs">
             <thead>
               <tr class="text-gray-400 border-b text-left">
-                <th class="pb-1 font-normal text-center w-[18%]">순위</th>
-                <th class="pb-1 font-normal text-center w-[52%]">저축은행</th>
-                <th class="pb-1 font-normal text-center w-[30%]">전일比</th>
+                <th class="pb-1 font-normal text-center w-[14%]">순위</th>
+                <th class="pb-1 font-normal text-center w-[38%]">저축은행</th>
+                <th class="pb-1 font-normal text-center w-[22%]">금리</th>
+                <th id="market-right-col4" class="pb-1 font-normal text-center w-[26%]">전일比</th>
               </tr>
             </thead>
             <tbody id="rates-down-list" class="divide-y divide-gray-50 text-red-500 font-medium">
-              <tr><td colspan="3" class="py-4 text-center text-gray-400">데이터 로딩 중</td></tr>
+              <tr><td colspan="4" class="py-4 text-center text-gray-400">데이터 로딩 중</td></tr>
             </tbody>
           </table>
         </div>
 
       </div>
 
+    </main>
+
+    <!-- 우측 AI 분석센터 패널 (3컬럼) -->
+    <aside id="ai-analysis-center" class="col-span-3 min-w-0 w-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4 overflow-hidden flex flex-col self-start">
+      <div class="flex justify-between items-center border-b pb-3">
+        <div>
+          <h2 class="font-bold text-sm text-gray-900 flex items-center gap-1">💬 AI 분석센터</h2>
+          <div class="text-[10px] text-gray-400 mt-1">실시간 시장 데이터 기반 Executive Intelligence</div>
+        </div>
+        <span class="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-semibold"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>LIVE</span>
+      </div>
+
+      <div id="ai-center-tabs" class="grid grid-cols-3 gap-1 bg-gray-50 rounded-lg p-1 text-[10px] font-medium">
+        <button type="button" data-ai-center-tab="market" class="ai-center-tab bg-white text-blue-700 shadow-sm rounded-md py-1.5 font-bold">시장분석</button>
+        <button type="button" data-ai-center-tab="financial" class="ai-center-tab text-gray-500 rounded-md py-1.5 hover:text-blue-600">금융지주 저축은행</button>
+        <button type="button" data-ai-center-tab="change" class="ai-center-tab text-gray-500 rounded-md py-1.5 hover:text-blue-600">변동분석</button>
+      </div>
+
+      <div id="ai-center-content" class="text-xs flex-1 min-h-0 overflow-y-auto pr-1">
+        <div class="py-10 text-center text-gray-400">AI 분석 데이터를 불러오는 중입니다.</div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 border-t pt-3 mt-auto">
+        <button type="button" id="ai-side-detail-btn" class="bg-blue-50 border border-blue-100 text-blue-700 py-2 rounded-lg text-[11px] font-semibold hover:bg-blue-100">📊 상세 분석</button>
+        <button type="button" id="ai-report-btn" class="bg-[#1a58c8] text-white py-2 rounded-lg text-[11px] font-semibold hover:bg-blue-700">📄 임원 보고서 생성</button>
+      </div>
+    </aside>
+
+    <section id="fullwidth-product-row" class="col-span-12">
       <!-- 하단 전체 상품 조회 검색 영역 -->
       <div id="product-search-panel" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-        <div class="flex justify-between items-center">
+        <div class="flex justify-between items-center gap-3">
           <div class="text-xs font-bold text-gray-800 flex items-center gap-1">
-            🔍 전체 상품 조회 <span class="text-gray-400 font-normal ml-2">378개 상품 검색 가능</span>
+            🔍 전체 상품 조회
+            <span id="product-result-count" class="text-gray-400 font-normal ml-2">데이터 로딩 중</span>
           </div>
-          <button class="text-xs text-gray-500 hover:text-gray-700">상세 검색 열기 ∨</button>
+          <span id="product-panel-caption" class="text-[10px] text-gray-400">정기예금 전체 기간 조회</span>
         </div>
+
         <div class="grid grid-cols-12 gap-3">
-          <select class="col-span-3 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none">
-            <option>은행 선택</option>
+          <select id="product-bank-select" class="col-span-3 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500">
+            <option value="">전체 저축은행</option>
           </select>
-          <select class="col-span-3 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none">
-            <option>상품 유형 선택</option>
+          <select id="product-period-select" class="col-span-2 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500">
+            <option value="">전체 기간</option>
+            <option value="3">3개월</option>
+            <option value="6">6개월</option>
+            <option value="12" selected>12개월</option>
+            <option value="24">24개월</option>
+            <option value="36">36개월</option>
           </select>
-          <input type="text" placeholder="상품명 검색" class="col-span-5 border border-gray-300 rounded-lg p-2 text-xs focus:outline-none" />
-          <button class="col-span-1 bg-[#1a58c8] text-white rounded-lg text-xs font-medium hover:bg-blue-700">
-            검색
-          </button>
+          <select id="product-sort-select" class="col-span-2 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500">
+            <option value="rate_desc" selected>금리 높은순</option>
+            <option value="rate_asc">금리 낮은순</option>
+            <option value="change_desc">변동폭 큰순</option>
+            <option value="bank_asc">은행명순</option>
+          </select>
+          <input id="product-search-input" type="text" placeholder="상품명 또는 저축은행 검색" class="col-span-3 border border-gray-300 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500" />
+          <button id="product-search-btn" type="button" class="col-span-2 bg-[#1a58c8] text-white rounded-lg text-xs font-medium hover:bg-blue-700">검색</button>
+        </div>
+
+        <div class="border border-gray-100 rounded-xl overflow-hidden">
+          <div class="max-h-[360px] overflow-y-auto">
+            <table class="w-full text-xs table-fixed">
+              <thead class="sticky top-0 bg-gray-50 z-10 text-gray-400 border-b">
+                <tr>
+                  <th class="py-2 font-normal text-center w-[8%]">순위</th>
+                  <th class="py-2 font-normal text-center w-[20%]">저축은행</th>
+                  <th class="py-2 font-normal text-left w-[34%]">상품명</th>
+                  <th class="py-2 font-normal text-center w-[12%]">기간</th>
+                  <th class="py-2 font-normal text-center w-[13%]">금리</th>
+                  <th id="product-last-header" class="py-2 font-normal text-center w-[13%]">전일比</th>
+                </tr>
+              </thead>
+              <tbody id="all-products-table-body" class="divide-y divide-gray-50">
+                <tr><td colspan="6" class="py-6 text-center text-gray-400">상품 데이터를 불러오는 중입니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -774,110 +905,50 @@ class="text-xs text-gray-600 leading-5">
         </div>
       </div>
 
-    </main>
 
-    <!-- 우측 AI 분석센터 패널 (3컬럼) -->
-    <aside id="ai-analysis-center" class="col-span-3 min-w-0 w-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-5 self-start overflow-y-auto">
+    </section>
 
-      <!-- 패널 헤더 -->
-      <div class="flex justify-between items-center border-b pb-3">
-        <h2 class="font-bold text-sm text-gray-900 flex items-center gap-1">💬 AI 분석센터</h2>
-        <button type="button" class="text-gray-400 hover:text-gray-600 text-sm">✕</button>
-      </div>
 
-      <!-- 서브 탭 -->
-      <div class="grid grid-cols-6 gap-1 text-[10px] border-b pb-2 text-gray-400 font-medium">
-        <span class="text-blue-600 font-bold border-b-2 border-blue-600 pb-2 text-center">시장</span>
-        <span class="text-center">금융지주</span>
-        <span class="text-center">우리금융</span>
-        <span class="text-center">경쟁사</span>
-        <span class="text-center">변동분석</span>
-        <span class="text-center">보고서</span>
-      </div>
-
-      <!-- 우리금융 현황 -->
-      <div class="bg-blue-50/40 p-3 rounded-xl border border-blue-100 text-xs space-y-3">
-        <div class="flex justify-between items-center gap-2">
-          <span class="font-bold text-blue-700">⭐ 우리금융</span>
-          <span id="woori-rank-badge" class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap">시장 포지션</span>
+  <!-- ======================================================
+       AI ANALYSIS CENTER DETAIL MODAL
+       일반 AI 질문 상세보기와 완전 분리
+  ====================================================== -->
+  <div id="ai-center-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[65] px-4">
+    <div class="bg-white w-full max-w-[920px] max-h-[90vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+        <div>
+          <h3 id="ai-center-detail-title" class="text-sm font-bold text-gray-900">📊 AI 상세 분석</h3>
+          <span id="ai-center-detail-subtitle" class="text-[10px] text-blue-600">선택한 분석 탭의 실제 데이터를 심층 분석합니다.</span>
         </div>
+        <button type="button" id="ai-center-detail-close" class="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+      </div>
+      <div id="ai-center-detail-content" class="px-5 py-4 text-xs text-gray-700 leading-6 overflow-y-auto max-h-[calc(88vh-64px)]">
+        상세 분석 데이터를 준비하고 있습니다.
+      </div>
+    </div>
+  </div>
 
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
-            <div class="text-[10px] text-gray-400">현재금리</div>
-            <div id="woori-rate" class="font-bold text-gray-800 text-sm">-</div>
-          </div>
-
-          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
-            <div class="text-[10px] text-gray-400">시장순위</div>
-            <div id="woori-rank" class="font-bold text-blue-700 text-sm">-</div>
-          </div>
-
-          <div class="bg-white rounded-lg px-2 py-2 min-w-0">
-            <div class="text-[10px] text-gray-400">시장평균대비</div>
-            <div id="woori-gap-average" class="font-bold text-sm">-</div>
-          </div>
+  <!-- ======================================================
+       AI EXECUTIVE REPORT MODAL
+  ====================================================== -->
+  <div id="ai-report-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[60] px-4">
+    <div class="bg-white w-full max-w-[760px] max-h-[88vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+        <div>
+          <h3 class="text-sm font-bold text-gray-900">📄 임원 보고서 · Executive Report</h3>
+          <span class="text-[10px] text-blue-600">정기예금 시장 · 금융지주 저축은행 · 변동현황 종합</span>
+          <div id="ai-report-data-basis" class="text-[10px] text-gray-400 mt-0.5">데이터 기준 -</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="ai-report-print" class="px-3 py-1.5 rounded-lg border border-gray-200 text-[11px] text-gray-600 hover:bg-gray-50">🖨 출력</button>
+          <button type="button" id="ai-report-pdf" class="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-[11px] text-blue-700 font-semibold hover:bg-blue-100">⬇ PDF</button>
+          <button type="button" id="ai-report-close" class="text-gray-400 hover:text-gray-700 text-lg ml-1">✕</button>
         </div>
       </div>
-
-      <!-- 금융지주 순위 목록 -->
-      <div class="space-y-2 text-xs">
-        <div class="font-bold text-gray-700 flex items-center gap-1">
-          🏆 금융지주 순위
-          <span class="text-[10px] font-normal text-gray-400">(평균금리 기준)</span>
-        </div>
-        <div class="space-y-1.5">
-          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
-            <span>1. 하나금융지주</span>
-            <span class="font-bold whitespace-nowrap">4.20%</span>
-          </div>
-          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200">
-            <span class="font-bold text-blue-700">2. 우리금융지주</span>
-            <span class="font-bold text-blue-700 whitespace-nowrap">4.10%</span>
-          </div>
-          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
-            <span>3. KB금융지주</span>
-            <span class="font-bold whitespace-nowrap">4.00%</span>
-          </div>
-          <div class="flex justify-between items-center gap-2 p-2 rounded-lg bg-gray-50">
-            <span>4. 신한금융지주</span>
-            <span class="font-bold whitespace-nowrap">3.90%</span>
-          </div>
-        </div>
+      <div id="ai-report-content" class="px-5 py-4 text-[12px] text-gray-700 leading-[1.45] overflow-y-auto max-h-[calc(90vh-72px)]">
+        AI 보고서를 준비하고 있습니다.
       </div>
-
-      <!-- AI 종합 의견 -->
-      <div class="bg-amber-50/50 p-3 rounded-xl border border-amber-100 text-xs space-y-1.5">
-        <div class="font-bold text-amber-800 flex items-center gap-1">💡 AI 종합 의견</div>
-        <p class="text-[11px] text-gray-600 leading-relaxed">
-          시장 전체 흐름과 우리금융의 금리 경쟁력을 실시간 데이터 기준으로 모니터링합니다.
-        </p>
-        <div class="text-right pt-1">
-          <button type="button" id="ai-side-detail-btn" class="text-[11px] text-blue-600 font-medium hover:underline">📊 상세 분석보기 &gt;</button>
-        </div>
-      </div>
-
-      <!-- 오늘의 브리핑 -->
-      <div class="space-y-2 border-t pt-3 text-xs">
-        <div class="font-bold text-gray-700 flex items-center gap-1">📅 오늘의 브리핑</div>
-        <ul class="text-[11px] text-gray-600 space-y-1 list-disc pl-4">
-          <li>시장 평균 및 최고금리 변화 모니터링</li>
-          <li>금리 변동 상품과 신규 상품 확인</li>
-          <li>우리금융 시장순위와 평균 대비 경쟁력 점검</li>
-        </ul>
-      </div>
-
-      <!-- 추가 질문 -->
-      <div class="space-y-2 pt-2">
-        <button type="button" class="w-full bg-[#1a58c8] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-blue-700 shadow-sm">AI에게 추가 질문하기</button>
-        <div class="flex gap-1 min-w-0">
-          <input type="text" placeholder="추가 질문을 입력하세요..." class="min-w-0 flex-1 border rounded-lg px-3 py-1.5 text-xs focus:outline-none" />
-          <button type="button" class="bg-[#1a58c8] text-white px-3 py-1.5 rounded-lg text-xs">➤</button>
-        </div>
-      </div>
-
-    </aside>
-
+    </div>
   </div>
 
   <!-- ======================================================

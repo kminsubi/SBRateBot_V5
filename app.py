@@ -3967,6 +3967,219 @@ def api_ai():
 
 
 
+
+# -------------------------------
+# ISA / 퇴직연금 AI 검색 V5.2
+# 선택 상품 데이터 전용
+# -------------------------------
+
+def build_pension_ai_answer(category, period, question):
+
+    category = str(category or "").strip().lower()
+    period = str(period or "12").strip()
+
+    if category not in ["isa", "irp"]:
+        return None
+
+    if period not in ["3", "6", "12", "24", "36"]:
+        period = "12"
+
+    data_file = (
+        ISA_DATA_FILE
+        if category == "isa"
+        else IRP_DATA_FILE
+    )
+
+    category_name = (
+        "ISA"
+        if category == "isa"
+        else "퇴직연금(IRP)"
+    )
+
+    source_category_name = (
+        "ISA"
+        if category == "isa"
+        else "퇴직연금"
+    )
+
+    items = build_pension_products(
+        data_file,
+        source_category_name
+    )
+
+    key = period + "m"
+
+    normalized_items = []
+
+    for item in items:
+
+        row = dict(item)
+
+        rate = (
+            row.get("rates", {})
+            .get(key)
+        )
+
+        row["period"] = period + "개월"
+        row["rate"] = rate
+
+        normalized_items.append(
+            row
+        )
+
+    valid_items = [
+
+        x
+
+        for x in normalized_items
+
+        if (
+            x.get("rate")
+            is not None
+        )
+        and
+        isinstance(
+            x.get("rate"),
+            (int, float)
+        )
+        and
+        x.get("rate") > 0
+
+    ]
+
+    valid_items.sort(
+        key=lambda x:
+            x.get("rate", 0),
+        reverse=True
+    )
+
+    woori = next(
+        (
+            x
+            for x in valid_items
+            if "우리금융" in str(
+                x.get("bank", "")
+            )
+        ),
+        None
+    )
+
+    market_context = {
+
+        "상품군":
+            category_name,
+
+        "조회기간":
+            period + "개월",
+
+        "수집기관수":
+            len(normalized_items),
+
+        "유효금리기관수":
+            len(valid_items),
+
+        "우리금융":
+            woori,
+
+        "금리순위":
+            valid_items[:20],
+
+        "전체수집데이터":
+            normalized_items[:30]
+
+    }
+
+    market_data = json.dumps(
+
+        market_context,
+
+        ensure_ascii=False,
+
+        indent=2
+
+    )
+
+    strict_prompt = (
+        "당신은 저축은행 수신상품 분석 AI입니다.\n"
+        f"현재 선택된 상품은 [{category_name}] 입니다.\n"
+        f"조회기간은 [{period}개월] 입니다.\n\n"
+        "중요 규칙:\n"
+        "1. 아래 제공된 데이터만 사용합니다.\n"
+        "2. 정기예금 시장 데이터로 바꾸어 답하지 않습니다.\n"
+        f"3. 모든 답변의 상품 기준은 반드시 {category_name}입니다.\n"
+        + (
+            "퇴직연금은 DB형이 아니라 IRP/DC·IRP 약정금리 기준으로만 답합니다.\n"
+            if category == "irp"
+            else ""
+        )
+        + "4. 금리가 null인 기관은 금리 순위에서 제외하되, "
+        "상품/공시 존재 여부를 묻는 질문에는 포함할 수 있습니다.\n"
+        "5. 공시일이 null이면 임의 날짜를 만들지 말고 '공시일 미확인'이라고 답합니다.\n"
+        "6. 우리금융 관련 질문은 제공된 우리금융 항목을 기준으로 합니다.\n\n"
+        "사용자 질문:\n"
+        + question
+    )
+
+    try:
+
+        ai_comment = ask_gemini(
+
+            strict_prompt,
+
+            market_data
+
+        )
+
+        if ai_comment:
+
+            return (
+                f"🤖 {category_name} AI 분석\n\n"
+                + ai_comment
+            )
+
+    except Exception as e:
+
+        print(
+            "PENSION AI GEMINI ERROR:",
+            e
+        )
+
+    # Gemini 실패 시에도 선택 상품 기준 기본답변
+    if not valid_items:
+
+        return (
+            f"{category_name} {period}개월 기준 "
+            "현재 유효 금리 데이터가 없습니다."
+        )
+
+    top = valid_items[0]
+
+    answer = (
+        f"📊 {category_name} {period}개월 기준\n\n"
+        f"수집기관 : {len(normalized_items)}개\n"
+        f"유효금리기관 : {len(valid_items)}개\n"
+        f"최고금리 : {top.get('bank','-')} "
+        f"{top.get('rate',0):.2f}%\n"
+    )
+
+    if woori:
+
+        rank = (
+            valid_items.index(woori)
+            + 1
+        )
+
+        answer += (
+            f"우리금융 : "
+            f"{woori.get('rate',0):.2f}% "
+            f"({rank}위)\n"
+            f"공시일 : "
+            f"{woori.get('disclosure_date') or '미확인'}"
+        )
+
+    return answer
+
+
 # -------------------------------
 # AI 검색 V4.1
 # Python Intent + Gemini 분리
@@ -4014,6 +4227,51 @@ def ai_search():
                 "answer":
 
                     "질문을 입력해주세요."
+
+            })
+
+
+
+        category = str(
+
+            data.get(
+                "category",
+                "deposit"
+            )
+
+        ).strip().lower()
+
+
+        period = str(
+
+            data.get(
+                "period",
+                "12"
+            )
+
+        ).strip()
+
+
+
+        if category in [
+            "isa",
+            "irp"
+        ]:
+
+
+            pension_answer = (
+                build_pension_ai_answer(
+                    category,
+                    period,
+                    question
+                )
+            )
+
+
+            return jsonify({
+
+                "answer":
+                    pension_answer
 
             })
 
