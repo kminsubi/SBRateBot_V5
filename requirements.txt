@@ -3,4 +3,5 @@ requests
 urllib3
 apscheduler
 google-genai
-python-dotenvgunicorn
+python-dotenv
+gunicorn
