@@ -518,6 +518,13 @@ async function loadAlternativeMarket(mode=activeMarketProduct,requestId=marketMo
 async function switchMarketProduct(mode){
     if(!MARKET_PRODUCT_CONFIG[mode]) return;
 
+    // Product dashboard switch always starts from the first screen.
+    // Initial page load is already at the top, so this is harmless there.
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
     const requestId = ++marketModeRequestId;
     activeMarketProduct = mode;
     currentMarketPeriod = currentSelectedPeriod() || "12";
@@ -2101,8 +2108,8 @@ async function refreshHeaderDataUpdateTime(){
 
     target.textContent = formatDataBasis(value);
     target.title = value
-        ? `데이터 기준일시: ${value}`
-        : "데이터 기준일시 정보 없음";
+        ? `데이터 업데이트 시간일시: ${value}`
+        : "데이터 업데이트 시간일시 정보 없음";
 
     renderDataFreshness(value);
 
@@ -2113,7 +2120,7 @@ async function refreshHeaderDataUpdateTime(){
 
     if(reportBasis){
         reportBasis.textContent =
-            `데이터 기준 ${formatDataBasis(value)}`;
+            `데이터 업데이트 시간 ${formatDataBasis(value)}`;
     }
 }
 
@@ -3081,19 +3088,47 @@ function closeAIExecutiveReport(){
     modal.classList.remove("flex");
 }
 
-function buildExecutiveReportBase(data, dataBasis){
-    const {kpi, woori, rates, financial, changes} = data;
+function reportSourceLabel(mode){
+    return mode === "deposit"
+        ? "저축은행중앙회 비교공시"
+        : "각 저축은행 공식 공시·상품 페이지";
+}
 
-    const top = rates[0] || {};
-    const financialTop = financial[0] || {};
-    const upCount = Number(changes.up_count ?? (changes.up_top5 || []).length ?? 0);
-    const downCount = Number(changes.down_count ?? (changes.down_top5 || []).length ?? 0);
-    const changeCount = Number(changes.change_count ?? kpi.change_count ?? 0);
+function reportDisclosureValue(item){
+    return formatDisclosureDate(item?.disclosure_date || item?.rate_month) || "-";
+}
+
+function reportMovementRows(data){
+    if(data.mode === "deposit"){
+        const ups = Array.isArray(data.changes?.up_top5) ? data.changes.up_top5 : [];
+        const downs = Array.isArray(data.changes?.down_top5) ? data.changes.down_top5 : [];
+
+        return [...ups,...downs]
+            .sort((a,b)=>Math.abs(Number(b.change ?? b.change_value ?? 0))-Math.abs(Number(a.change ?? a.change_value ?? 0)))
+            .slice(0,5)
+            .map((item,index)=>({
+                ...item,
+                rank:index+1
+            }));
+    }
+
+    return Array.isArray(data.changes?.recent_disclosures)
+        ? data.changes.recent_disclosures.slice(0,5)
+        : [];
+}
+
+function buildExecutiveReportBase(data, dataBasis){
+    const {kpi, woori, rates, financial, changes, mode} = data;
+
+    const reportRates = Array.isArray(rates) ? rates : [];
+    const reportFinancial = Array.isArray(financial) ? financial : [];
+    const top = reportRates[0] || {};
+    const movementRows = reportMovementRows(data);
 
     const marketAvg = Number(kpi.average_rate);
     const topRate = Number(top.rate ?? kpi.max_rate ?? kpi.highest_rate);
+    const lowRate = Number(kpi.lowest_rate);
     const wooriRate = Number(woori.rate);
-    const avgGap = Number(woori.average_gap ?? 0);
 
     const marketSpread =
         Number.isFinite(topRate) && Number.isFinite(marketAvg)
@@ -3105,35 +3140,75 @@ function buildExecutiveReportBase(data, dataBasis){
             ? wooriRate - topRate
             : null;
 
-    const movementTone =
-        changeCount === 0
-            ? "금리 변동이 없어 시장은 안정적입니다."
-            : upCount > downCount
-                ? "상승 조정이 하락보다 우세해 상단 금리 경쟁을 점검할 필요가 있습니다."
-                : downCount > upCount
-                    ? "하락 조정이 상대적으로 우세해 시장금리 하향 움직임을 확인할 필요가 있습니다."
-                    : "상승·하락 조정이 혼재되어 개별사 움직임 확인이 필요합니다.";
+    const avgGap =
+        Number.isFinite(wooriRate) && Number.isFinite(marketAvg)
+            ? wooriRate - marketAvg
+            : null;
 
-    const wooriTone =
-        avgGap > 0
-            ? `우리금융은 시장 평균보다 ${avgGap.toFixed(2)}%p 높은 수준입니다.`
-            : avgGap < 0
-                ? `우리금융은 시장 평균보다 ${Math.abs(avgGap).toFixed(2)}%p 낮아 경쟁력 점검이 필요합니다.`
-                : "우리금융은 시장 평균과 동일한 수준입니다.";
+    const top5Boundary =
+        reportRates[4] && Number.isFinite(Number(reportRates[4].rate))
+            ? Number(reportRates[4].rate)
+            : null;
+
+    const top5Gap =
+        Number.isFinite(wooriRate) && Number.isFinite(top5Boundary)
+            ? wooriRate - top5Boundary
+            : null;
+
+    const higherCount =
+        Number.isFinite(wooriRate)
+            ? reportRates.filter(item=>Number(item.rate) > wooriRate).length
+            : null;
+
+    const changeCount = Number(changes.change_count ?? kpi.change_count ?? 0);
+    const upCount = Number(changes.up_count ?? 0);
+    const downCount = Number(changes.down_count ?? 0);
+
+    const movementSummary =
+        mode === "deposit"
+            ? `변동 ${changeCount}건 · 상승 ${upCount} / 하락 ${downCount}`
+            : `최근 공시 ${movementRows.length}건`;
+
+    const movementTitle =
+        mode === "deposit"
+            ? "최근 금리 변동"
+            : "최근 공시 현황";
+
+    const reportSource =
+        reportSourceLabel(mode);
+
+    const sourceCount =
+        mode === "deposit"
+            ? "-"
+            : reportRates.filter(item=>item.source || item.source_url || item.url).length;
+
+    const financialWooriIndex =
+        reportFinancial.findIndex(item=>String(item.bank || "").includes("우리금융"));
+
+    const monitorPoints = [
+        top5Gap === null
+            ? "TOP5 경계 금리 데이터를 확인합니다."
+            : `TOP5 경계 금리 ${aiCenterRate(top5Boundary)}와 우리금융의 단순 금리차 ${top5Gap >= 0 ? "+" : ""}${top5Gap.toFixed(2)}%p를 모니터링합니다.`,
+        mode === "deposit"
+            ? `전일 변동 ${changeCount}건 중 상위금리권 조정 여부를 우선 확인합니다.`
+            : "최근 공시일이 갱신된 상위기관의 금리 재조정 여부를 우선 확인합니다.",
+        reportFinancial.length
+            ? `금융지주계 저축은행 내 우리금융 순위 ${financialWooriIndex >= 0 ? financialWooriIndex+1 : "-"}위와 선두사 Gap을 확인합니다.`
+            : "금융지주계 비교 데이터의 추가 확보 여부를 확인합니다."
+    ];
 
     return `
       <div id="executive-report-document" class="space-y-3 bg-white">
 
-        <!-- Report Header -->
         <div class="rounded-xl overflow-hidden border border-blue-100">
           <div class="bg-gradient-to-r from-[#0b4ea2] to-[#1a67d2] text-white px-4 py-3 flex items-end justify-between gap-4">
             <div>
               <div class="text-[10px] text-blue-100 tracking-[0.12em]">EXECUTIVE INTELLIGENCE</div>
-              <div class="text-[17px] font-bold mt-0.5">SBRateBot ${marketProductLabel()} 시장 브리핑</div>
-              <div class="text-[10px] text-blue-100 mt-1">${marketProductLabel()} ${currentSelectedPeriod()}개월 · 금융지주 저축은행 경쟁현황</div>
+              <div class="text-[17px] font-bold mt-0.5">SBRateBot ${marketProductLabel()} AI Market Analysis Report</div>
+              <div class="text-[10px] text-blue-100 mt-1">${marketProductLabel()} ${currentSelectedPeriod()}개월 · 우리금융 수신시장 경쟁력 분석</div>
             </div>
             <div class="text-right text-[10px] leading-4 text-blue-100">
-              <div>데이터 기준 ${dataBasis}</div>
+              <div>데이터 업데이트 시간 ${dataBasis}</div>
               <div>생성 ${formatKoreanCurrentDateTime(new Date())}</div>
             </div>
           </div>
@@ -3141,106 +3216,150 @@ function buildExecutiveReportBase(data, dataBasis){
           <div class="grid grid-cols-4 gap-2 p-3 bg-[#fbfdff] text-center">
             <div class="er-metric bg-blue-50 border-blue-100">
               <div class="er-metric-label text-blue-600">우리금융</div>
-              <div class="er-metric-value text-blue-700">${aiCenterRate(woori.rate)}</div>
+              <div class="er-metric-value text-blue-700">${aiCenterRate(wooriRate)}</div>
             </div>
             <div class="er-metric">
               <div class="er-metric-label">시장 최고</div>
-              <div class="er-metric-value text-blue-700">${aiCenterRate(top.rate ?? kpi.max_rate ?? kpi.highest_rate)}</div>
+              <div class="er-metric-value text-blue-700">${aiCenterRate(topRate)}</div>
             </div>
             <div class="er-metric">
               <div class="er-metric-label">시장 평균</div>
-              <div class="er-metric-value">${aiCenterRate(kpi.average_rate)}</div>
+              <div class="er-metric-value">${aiCenterRate(marketAvg)}</div>
             </div>
             <div class="er-metric">
-              <div class="er-metric-label">금리 변동</div>
-              <div class="er-metric-value">${changeCount}건</div>
+              <div class="er-metric-label">시장 순위</div>
+              <div class="er-metric-value">${woori.market_rank ?? "-"}위</div>
             </div>
           </div>
         </div>
 
-        <!-- Executive Summary -->
         <section class="er-section">
-          <div class="er-title">
-            <span>01 · Executive Summary</span>
-            <span class="text-[9px] text-blue-600">TODAY</span>
-          </div>
+          <div class="er-title"><span>01 · Executive Summary</span><span class="text-[9px] text-blue-600">TODAY</span></div>
           <div class="er-body space-y-2">
             <div class="er-insight">
-              <b>${displayBankName(top.bank ?? "-")}</b>가 ${aiCenterRate(top.rate)}로 시장 상단을 형성하고 있으며,
-              시장 평균 대비 최고금리 스프레드는 ${marketSpread === null ? "-" : marketSpread.toFixed(2) + "%p"}입니다.
-              ${movementTone}
+              <b>${displayBankName(top.bank ?? "-")}</b>가 ${aiCenterRate(topRate)}로 시장 상단을 형성하고 있으며
+              시장 평균은 ${aiCenterRate(marketAvg)}입니다.
+              우리금융은 ${aiCenterRate(wooriRate)}로 시장 ${woori.market_rank ?? "-"}위입니다.
             </div>
             <div class="er-insight">
-              ${wooriTone}
-              시장순위 ${woori.market_rank ?? "-"}위, 금융지주 저축은행 내 ${woori.financial_rank ?? "-"}위이며
-              시장 최고금리 대비 ${wooriToTop === null ? "-" : aiCenterGap(wooriToTop)} 수준입니다.
+              우리금융보다 높은 금리 기관은 ${higherCount ?? "-"}개이며,
+              TOP5 경계와의 단순 금리차는 ${top5Gap === null ? "-" : (top5Gap >= 0 ? "+" : "") + top5Gap.toFixed(2) + "%p"}입니다.
+              ${movementSummary}.
             </div>
           </div>
         </section>
 
-        <!-- Market + Woori -->
-        <div class="grid grid-cols-2 gap-3">
-          <section class="er-section">
-            <div class="er-title"><span>02 · 시장 현황</span><span>${Number(kpi.product_count || 0).toLocaleString()}개 상품</span></div>
-            <div class="er-body space-y-1.5 text-[11px]">
-              <div class="flex justify-between"><span class="text-gray-500">최고금리</span><b>${displayBankName(top.bank ?? "-")} ${aiCenterRate(top.rate)}</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">시장 평균</span><b>${aiCenterRate(kpi.average_rate)}</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">전일 변동</span><b>${changeCount}건</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">상승 / 하락</span><b><span class="text-blue-600">${upCount}</span> / <span class="text-red-600">${downCount}</span></b></div>
-            </div>
-          </section>
-
-          <section class="er-section">
-            <div class="er-title"><span>03 · 우리금융 경쟁력</span><span class="text-blue-600">${woori.market_rank ?? "-"}위</span></div>
-            <div class="er-body space-y-1.5 text-[11px]">
-              <div class="flex justify-between"><span class="text-gray-500">현재금리</span><b>${aiCenterRate(woori.rate)}</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">평균 대비</span><b>${aiCenterGap(woori.average_gap)}</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">시장순위</span><b>${woori.market_rank ?? "-"}위</b></div>
-              <div class="flex justify-between"><span class="text-gray-500">금융지주 순위</span><b>${woori.financial_rank ?? "-"}위</b></div>
-            </div>
-          </section>
-        </div>
-
-        <!-- Financial Group -->
         <section class="er-section">
-          <div class="er-title">
-            <span>04 · 금융지주 저축은행 현황</span>
-            <span>선두 ${displayBankName(financialTop.bank ?? "-")} ${aiCenterRate(financialTop.rate)}</span>
+          <div class="er-title"><span>02 · Market Snapshot</span><span>${woori.market_total ?? reportRates.length}개 기관</span></div>
+          <div class="er-body grid grid-cols-2 gap-x-5 gap-y-1.5 text-[11px]">
+            <div class="flex justify-between"><span class="text-gray-500">시장 최고</span><b>${displayBankName(top.bank ?? "-")} ${aiCenterRate(topRate)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">시장 평균</span><b>${aiCenterRate(marketAvg)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">시장 최저</span><b>${Number.isFinite(lowRate) ? aiCenterRate(lowRate) : "-"}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">${mode === "deposit" ? "금리 변동" : "공시 현황"}</span><b>${movementSummary}</b></div>
           </div>
+        </section>
+
+        <section class="er-section">
+          <div class="er-title"><span>03 · Woori Market Position</span><span class="text-blue-600">${woori.market_rank ?? "-"}위</span></div>
+          <div class="er-body grid grid-cols-2 gap-x-5 gap-y-1.5 text-[11px]">
+            <div class="flex justify-between"><span class="text-gray-500">우리금융 금리</span><b class="text-blue-700">${aiCenterRate(wooriRate)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">시장 최고 대비</span><b>${wooriToTop === null ? "-" : aiCenterGap(wooriToTop)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">시장 평균 대비</span><b>${avgGap === null ? "-" : aiCenterGap(avgGap)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">우리보다 높은 기관</span><b>${higherCount ?? "-"}개</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">TOP5 경계</span><b>${top5Boundary === null ? "-" : aiCenterRate(top5Boundary)}</b></div>
+            <div class="flex justify-between"><span class="text-gray-500">금융지주 순위</span><b>${financialWooriIndex >= 0 ? financialWooriIndex+1 : "-"}위</b></div>
+          </div>
+        </section>
+
+        <section class="er-section">
+          <div class="er-title"><span>04 · Competitive Landscape</span><span>TOP10</span></div>
           <div class="er-body pt-1">
-            <div class="grid grid-cols-[34px_1fr_72px_72px] gap-2 px-2 py-1 text-[9px] text-gray-400">
-              <span>순위</span><span>저축은행</span><span class="text-right">금리</span><span class="text-right">전일比</span>
+            <div class="grid grid-cols-[34px_1fr_72px_88px] gap-2 px-2 py-1 text-[9px] text-gray-400">
+              <span>순위</span><span>저축은행</span><span class="text-right">금리</span><span class="text-right">${mode === "deposit" ? "전일比" : "공시일"}</span>
             </div>
-            <div>
-              ${financial.slice(0,7).map(item=>{
-                  const isWoori = String(item.bank || "").includes("우리금융");
-                  return `<div class="er-row ${isWoori ? "bg-blue-50 text-blue-700 font-bold rounded-md" : ""}">
-                    <span>${item.rank ?? "-"}</span>
-                    <span>${displayBankName(item.bank ?? "-")}</span>
-                    <span class="text-right font-semibold">${aiCenterRate(item.rate)}</span>
-                    <span class="text-right">${aiCenterChange(item.change)}</span>
-                  </div>`;
-              }).join("") || '<div class="text-center text-gray-400 py-3">금융지주 저축은행 데이터 없음</div>'}
-            </div>
+            ${reportRates.slice(0,10).map((item,index)=>{
+                const isWoori = String(item.bank || "").includes("우리금융");
+                const last =
+                    mode === "deposit"
+                        ? aiCenterChange(item.change)
+                        : reportDisclosureValue(item);
+                return `<div class="grid grid-cols-[34px_1fr_72px_88px] gap-2 px-2 py-1.5 text-[10px] border-b border-gray-50 ${isWoori ? "bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200" : ""}">
+                  <span>${item.rank ?? index+1}</span>
+                  <span>${displayBankName(item.bank ?? "-")}</span>
+                  <span class="text-right font-semibold">${aiCenterRate(item.rate)}</span>
+                  <span class="text-right">${last}</span>
+                </div>`;
+            }).join("")}
           </div>
         </section>
 
-        <!-- Movement -->
         <section class="er-section">
-          <div class="er-title"><span>05 · 금리 변동 포인트</span><span>${changeCount}건</span></div>
-          <div class="er-body grid grid-cols-3 gap-2 text-center">
-            <div class="rounded-lg bg-blue-50 p-2"><div class="text-[9px] text-gray-400">상승</div><div class="text-sm font-bold text-blue-600">${upCount}건</div></div>
-            <div class="rounded-lg bg-red-50 p-2"><div class="text-[9px] text-gray-400">하락</div><div class="text-sm font-bold text-red-600">${downCount}건</div></div>
-            <div class="rounded-lg bg-gray-50 p-2"><div class="text-[9px] text-gray-400">전체 변동</div><div class="text-sm font-bold text-gray-800">${changeCount}건</div></div>
+          <div class="er-title"><span>05 · Financial Group Peers</span><span>${reportFinancial.length}개</span></div>
+          <div class="er-body pt-1">
+            ${reportFinancial.slice(0,8).map((item,index)=>{
+                const isWoori = String(item.bank || "").includes("우리금융");
+                const last =
+                    mode === "deposit"
+                        ? aiCenterChange(item.change)
+                        : reportDisclosureValue(item);
+                return `<div class="grid grid-cols-[34px_1fr_72px_88px] gap-2 px-2 py-1.5 text-[10px] border-b border-gray-50 ${isWoori ? "bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200" : ""}">
+                  <span>${item.rank ?? index+1}</span>
+                  <span>${displayBankName(item.bank ?? "-")}</span>
+                  <span class="text-right font-semibold">${aiCenterRate(item.rate)}</span>
+                  <span class="text-right">${last}</span>
+                </div>`;
+            }).join("") || '<div class="text-center text-gray-400 py-3">금융지주계 비교 데이터 없음</div>'}
           </div>
         </section>
 
-        <!-- AI -->
+        <section class="er-section">
+          <div class="er-title"><span>06 · ${movementTitle}</span><span>${movementSummary}</span></div>
+          <div class="er-body pt-1">
+            ${movementRows.map((item,index)=>{
+                const c = Number(item.change ?? item.change_value ?? 0);
+                const last =
+                    mode === "deposit"
+                        ? (c > 0 ? `<span class="text-blue-600 font-bold">+${Math.abs(c).toFixed(2)}%p</span>` : c < 0 ? `<span class="text-red-600 font-bold">▲${Math.abs(c).toFixed(2)}%p</span>` : "-")
+                        : reportDisclosureValue(item);
+                return `<div class="grid grid-cols-[34px_1fr_72px_88px] gap-2 px-2 py-1.5 text-[10px] border-b border-gray-50 ${String(item.bank || "").includes("우리금융") ? "bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200" : ""}">
+                  <span>${item.rank ?? index+1}</span>
+                  <span>${displayBankName(item.bank ?? "-")}</span>
+                  <span class="text-right font-semibold">${aiCenterRate(item.rate)}</span>
+                  <span class="text-right">${last}</span>
+                </div>`;
+            }).join("") || '<div class="text-center text-gray-400 py-3">변동·공시 데이터 없음</div>'}
+          </div>
+        </section>
+
         <section id="executive-report-ai-section" class="er-section">
-          <div class="er-title"><span>06 · AI Executive View</span><span class="text-indigo-600">AI</span></div>
+          <div class="er-title"><span>07 · AI Management Insight</span><span class="text-indigo-600">AI</span></div>
           <div class="er-body">
             <div id="executive-report-ai-text" class="text-gray-500 leading-[1.5]">
               AI 종합 판단을 생성하고 있습니다...
+            </div>
+          </div>
+        </section>
+
+        <section class="er-section">
+          <div class="er-title"><span>08 · Key Monitoring Points</span><span>ACTION</span></div>
+          <div class="er-body text-[11px]">
+            <ol class="list-decimal pl-5 space-y-1">
+              ${monitorPoints.map(point=>`<li>${point}</li>`).join("")}
+            </ol>
+          </div>
+        </section>
+
+        <section class="er-section">
+          <div class="er-title"><span>09 · Data Source & Notes</span><span>TRUST</span></div>
+          <div class="er-body text-[10px] leading-5">
+            <div class="rounded-lg bg-gray-50 border border-gray-100 p-3">
+              <div><b>출처</b> · ${reportSource}</div>
+              <div><b>데이터 업데이트 시간</b> · ${dataBasis}</div>
+              <div><b>원문 링크 보유</b> · ${sourceCount}건</div>
+              <div class="mt-1 text-gray-500">
+                공시일은 개별 기관의 공식 공시 기준입니다. 금리 미확인 값은 0%로 해석하지 않고 '-'로 표시합니다.
+                순위·금리·Gap·공시일 등 수치는 SBRateBot 수집 데이터로 계산하며 AI는 제공된 수치의 해석에만 사용됩니다.
+              </div>
             </div>
           </div>
         </section>
@@ -3263,13 +3382,25 @@ async function openAIExecutiveReport(){
     content.innerHTML = buildExecutiveReportBase(data, dataBasis);
 
     const basisEl = document.getElementById("ai-report-data-basis");
-    if(basisEl) basisEl.textContent = `데이터 기준 ${dataBasis}`;
+    if(basisEl) basisEl.textContent = `데이터 업데이트 시간 ${dataBasis}`;
+
+    const top5Boundary = data.rates?.[4]?.rate ?? null;
+    const higherCount = Number.isFinite(Number(data.woori.rate))
+        ? (data.rates || []).filter(item=>Number(item.rate) > Number(data.woori.rate)).length
+        : null;
 
     const question =
-        `데이터 기준 ${dataBasis}. ${marketProductLabel()} ${currentSelectedPeriod()}개월 시장을 임원 관점에서 분석해줘.
-시장 평균 ${data.kpi.average_rate ?? "-"}%, 최고금리 ${data.kpi.max_rate ?? data.kpi.highest_rate ?? "-"}%, 우리금융 금리 ${data.woori.rate ?? "-"}%, 시장순위 ${data.woori.market_rank ?? "-"}위, 금융지주 순위 ${data.woori.financial_rank ?? "-"}위다.
-중복 설명 없이 ① 시장상황 ② 우리금융 경쟁력 ③ 핵심 리스크 ④ 대응 포인트 순서로 각 1~2문장만 작성해줘.
-수치가 없는 내용은 추정하지 말고, ${marketProductLabel()} 데이터만 사용해줘.`;
+        `데이터 업데이트 시간 ${dataBasis}. ${marketProductLabel()} ${currentSelectedPeriod()}개월 AI 시장분석 보고서의 AI Management Insight를 작성해줘.
+반드시 아래 제공 데이터만 사용하고 새로운 숫자를 만들거나 추정하지 마.
+우리금융 금리 ${data.woori.rate ?? "-"}%, 시장순위 ${data.woori.market_rank ?? "-"}위, 시장 최고 ${data.kpi.max_rate ?? data.kpi.highest_rate ?? "-"}%, 시장 평균 ${data.kpi.average_rate ?? "-"}%, TOP5 경계 ${top5Boundary ?? "-"}%, 우리금융보다 높은 기관 ${higherCount ?? "-"}개.
+금융지주계 데이터: ${JSON.stringify((data.financial || []).slice(0,8))}.
+${data.mode === "deposit" ? `변동 데이터: ${JSON.stringify(data.changes || {})}` : `최근 공시 데이터: ${JSON.stringify(reportMovementRows(data))}`}.
+다음 순서로 간결하지만 전문적으로 작성해줘:
+① 시장상황 2문장
+② 우리금융 경쟁력 2문장
+③ 핵심 리스크·기회 2문장
+④ 대응 및 모니터링 포인트 3개.
+일반론은 제외하고 ${marketProductLabel()} 데이터에 근거해 작성해줘.`;
 
     try{
         const response = await fetch("/api/ai/search", {
@@ -3322,7 +3453,7 @@ function printExecutiveReport(){
       <html lang="ko">
       <head>
         <meta charset="utf-8">
-        <title>SBRateBot Executive Report</title>
+        <title>SBRateBot AI Market Analysis Report</title>
         <script src="https://cdn.tailwindcss.com"><\/script>
         <style>
           body{font-family:Arial,"Noto Sans KR",sans-serif;padding:32px;color:#1f2937}
@@ -3502,20 +3633,20 @@ function centerDetailQuestion(tab, data){
 
     if(activeMarketProduct !== "deposit"){
         const label=marketProductLabel();
-        if(tab==="financial") return `데이터 기준 ${basis}. ${label} ${currentSelectedPeriod()}개월 기준 금융지주 저축은행 경쟁현황을 심층 분석해줘. 우리금융 금리 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위, 평균대비 ${woori.average_gap??0}%p이며 금융지주 현황은 ${JSON.stringify(financial.slice(0,10))}이다. 공시일과 금리격차 중심으로 대응 포인트를 작성해줘.`;
-        if(tab==="change") return `데이터 기준 ${basis}. ${label} 최근 공시 현황을 심층 분석해줘. 최근 공시 데이터는 ${JSON.stringify(changes.recent_disclosures||[])}이다. 우리금융 공시일과 경쟁사 공시 움직임을 중심으로 작성해줘.`;
-        return `데이터 기준 ${basis}. ${label} ${currentSelectedPeriod()}개월 시장을 심층 분석해줘. 평균 ${kpi.average_rate??"-"}%, 최고 ${kpi.max_rate??"-"}%, 우리금융 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위다. 상위권 경쟁강도와 우리금융 시사점을 작성해줘.`;
+        if(tab==="financial") return `데이터 업데이트 시간 ${basis}. ${label} ${currentSelectedPeriod()}개월 기준 금융지주 저축은행 경쟁현황을 심층 분석해줘. 우리금융 금리 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위, 평균대비 ${woori.average_gap??0}%p이며 금융지주 현황은 ${JSON.stringify(financial.slice(0,10))}이다. 공시일과 금리격차 중심으로 대응 포인트를 작성해줘.`;
+        if(tab==="change") return `데이터 업데이트 시간 ${basis}. ${label} 최근 공시 현황을 심층 분석해줘. 최근 공시 데이터는 ${JSON.stringify(changes.recent_disclosures||[])}이다. 우리금융 공시일과 경쟁사 공시 움직임을 중심으로 작성해줘.`;
+        return `데이터 업데이트 시간 ${basis}. ${label} ${currentSelectedPeriod()}개월 시장을 심층 분석해줘. 평균 ${kpi.average_rate??"-"}%, 최고 ${kpi.max_rate??"-"}%, 우리금융 ${woori.rate??"-"}%, 시장순위 ${woori.market_rank??"-"}위다. 상위권 경쟁강도와 우리금융 시사점을 작성해줘.`;
     }
 
     if(tab === "financial"){
-        return `데이터 기준 ${basis}. 금융지주 저축은행만 대상으로 우리금융의 경쟁력을 심층 분석해줘. 우리금융 금리 ${woori.rate ?? "-"}%, 금융지주 순위 ${woori.financial_rank ?? "-"}위, 시장 평균 대비 ${woori.average_gap ?? 0}%p이며 금융지주 현황 데이터는 ${JSON.stringify(financial.slice(0,10))}이다. 상위사 대비 GAP, 경쟁사 금리 조정, 우리금융 대응 포인트 순으로 분석해줘. 일반적인 AI 질문 답변이 아니라 이 데이터에 근거한 분석만 작성해줘.`;
+        return `데이터 업데이트 시간 ${basis}. 금융지주 저축은행만 대상으로 우리금융의 경쟁력을 심층 분석해줘. 우리금융 금리 ${woori.rate ?? "-"}%, 금융지주 순위 ${woori.financial_rank ?? "-"}위, 시장 평균 대비 ${woori.average_gap ?? 0}%p이며 금융지주 현황 데이터는 ${JSON.stringify(financial.slice(0,10))}이다. 상위사 대비 GAP, 경쟁사 금리 조정, 우리금융 대응 포인트 순으로 분석해줘. 일반적인 AI 질문 답변이 아니라 이 데이터에 근거한 분석만 작성해줘.`;
     }
 
     if(tab === "change"){
-        return `데이터 기준 ${basis}. 오늘 저축은행 정기예금 금리 변동을 심층 분석해줘. 상승 ${changes.up_count ?? 0}건, 하락 ${changes.down_count ?? 0}건, 전체변동 ${changes.change_count ?? 0}건이며 상승 TOP5 ${JSON.stringify(changes.up_top5 || [])}, 하락 TOP5 ${JSON.stringify(changes.down_top5 || [])}이다. 변동 방향, 주요 기관, 우리금융에 미치는 시사점 순으로 작성해줘.`;
+        return `데이터 업데이트 시간 ${basis}. 오늘 저축은행 정기예금 금리 변동을 심층 분석해줘. 상승 ${changes.up_count ?? 0}건, 하락 ${changes.down_count ?? 0}건, 전체변동 ${changes.change_count ?? 0}건이며 상승 TOP5 ${JSON.stringify(changes.up_top5 || [])}, 하락 TOP5 ${JSON.stringify(changes.down_top5 || [])}이다. 변동 방향, 주요 기관, 우리금융에 미치는 시사점 순으로 작성해줘.`;
     }
 
-    return `데이터 기준 ${basis}. 오늘 정기예금 시장을 심층 분석해줘. 시장 평균 ${kpi.average_rate ?? "-"}%, 최고금리 ${kpi.max_rate ?? kpi.highest_rate ?? "-"}%, 상품수 ${kpi.product_count ?? 0}개, 금리변동 ${changes.change_count ?? kpi.change_count ?? 0}건이다. 시장 수준, 상위권 경쟁 강도, 오늘의 체크포인트 순으로 데이터 기반 분석해줘.`;
+    return `데이터 업데이트 시간 ${basis}. 오늘 정기예금 시장을 심층 분석해줘. 시장 평균 ${kpi.average_rate ?? "-"}%, 최고금리 ${kpi.max_rate ?? kpi.highest_rate ?? "-"}%, 상품수 ${kpi.product_count ?? 0}개, 금리변동 ${changes.change_count ?? kpi.change_count ?? 0}건이다. 시장 수준, 상위권 경쟁 강도, 오늘의 체크포인트 순으로 데이터 기반 분석해줘.`;
 }
 
 async function openAICenterDetail(){
@@ -3556,7 +3687,7 @@ async function openAICenterDetail(){
           };
 
     if(title) title.textContent = titles[tab] || "📊 AI 상세 분석";
-    if(subtitle) subtitle.textContent = "선택한 탭의 실제 데이터 기준 심층 분석";
+    if(subtitle) subtitle.textContent = "선택한 탭의 실제 데이터 업데이트 시간 심층 분석";
 
     modal.classList.remove("hidden");
     modal.classList.add("flex");

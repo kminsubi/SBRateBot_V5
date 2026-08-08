@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f4db8" />
+  <title>SBRateBot Mobile</title>
+  <link rel="stylesheet" href="/static/css/mobile.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+
+    <header class="mobile-header">
+      <div class="brand-row">
+        <div class="brand">
+          <img src="/static/images/ci.png" alt="우리금융저축은행" class="brand-logo" />
+          <div class="brand-text">
+            <strong>수신 모니터링 현황</strong>
+          </div>
+        </div>
+        <button id="mobile-refresh" class="icon-btn" aria-label="새로고침">↻</button>
+      </div>
+
+      <div class="product-tabs" id="mobile-product-tabs">
+        <button class="product-tab is-active" data-product="deposit">정기예금</button>
+        <button class="product-tab" data-product="isa">ISA</button>
+        <button class="product-tab" data-product="irp">퇴직연금(IRP)</button>
+      </div>
+
+      <div class="data-meta">
+        <div class="data-meta-left">
+          <span id="mobile-market-label">12개월 시장현황</span>
+          <button id="mobile-report-open" class="top-report-btn">보고서</button>
+        </div>
+        <div class="data-meta-right">
+          <span class="mobile-time-line">
+            <span class="mobile-update-label">데이터 업데이트 00:30</span>
+            <span class="mobile-time-divider">·</span>
+            <span id="mobile-live-clock">현재 --:--:--</span>
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <main class="mobile-main">
+      <section id="home" class="section-block">
+        <article class="hero-card">
+          <div class="hero-top">
+            <div>
+              <span class="eyebrow">WOORI POSITION</span>
+              <h1 id="hero-product-label">정기예금 12개월</h1>
+            </div>
+            <span id="hero-rank-pill" class="rank-pill">-위</span>
+          </div>
+
+          <div class="hero-rate-row">
+            <div>
+              <span class="metric-label">우리금융 금리</span>
+              <strong id="hero-woori-rate" class="hero-rate">-</strong>
+            </div>
+            <div class="hero-gap">
+              <span>시장 최고 대비</span>
+              <strong id="hero-gap-top">-</strong>
+            </div>
+          </div>
+
+          <div id="hero-ai-brief" class="ai-brief">
+            시장 데이터를 불러오고 있습니다.
+          </div>
+        </article>
+
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <span>시장 최고</span>
+            <strong id="kpi-top-rate">-</strong>
+            <small id="kpi-top-bank">-</small>
+          </article>
+          <article class="kpi-card">
+            <span>시장 평균</span>
+            <strong id="kpi-average-rate">-</strong>
+            <small id="kpi-average-gap">-</small>
+          </article>
+          <article class="kpi-card">
+            <span>시장 순위</span>
+            <strong id="kpi-market-rank">-</strong>
+            <small id="kpi-market-total">-</small>
+          </article>
+          <article class="kpi-card">
+            <span id="kpi-fourth-label">금리 변동</span>
+            <strong id="kpi-fourth-value">-</strong>
+            <small id="kpi-fourth-sub">-</small>
+          </article>
+        </div>
+      </section>
+
+      <section id="market" class="section-block">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">MARKET</span>
+            <h2>시장 TOP5</h2>
+          </div>
+          <button id="toggle-top10" class="text-btn">TOP10 보기</button>
+        </div>
+
+        <article class="panel-card">
+          <div class="table-head rank-grid">
+            <span>순위</span>
+            <span>저축은행</span>
+            <span>금리</span>
+            <span id="market-last-head">전일比</span>
+          </div>
+          <div id="market-ranking-list" class="ranking-list"></div>
+        </article>
+
+        <div class="section-heading subsection-heading">
+          <div>
+            <span class="eyebrow">WATCH</span>
+            <h2 id="watch-title">금리 변동 브리핑</h2>
+          </div>
+        </div>
+
+        <article class="panel-card">
+          <div id="watch-content" class="watch-content"></div>
+        </article>
+      </section>
+
+      <section id="ai" class="section-block">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">AI ASSISTANT</span>
+            <h2>시장 질문</h2>
+          </div>
+          <div class="section-actions">
+            <span class="status-dot">Online</span>
+          </div>
+        </div>
+
+        <article class="panel-card ai-card">
+          <div class="quick-questions" id="mobile-quick-questions">
+            <button data-question="우리금융 경쟁력 알려줘">당행 경쟁력</button>
+            <button data-question="시장 최고금리와 우리금융 차이 알려줘">최고금리 Gap</button>
+            <button data-question="금융지주 저축은행 현황 알려줘">금융지주 현황</button>
+            <button data-question="오늘 금리 변동 핵심 알려줘">오늘 변동</button>
+            <button data-question="우리금융보다 금리가 높은 곳 알려줘">상위 경쟁사</button>
+            <button data-question="시장 평균과 우리금융을 비교해줘">시장 평균 비교</button>
+          </div>
+
+          <div class="ai-input-row">
+            <textarea id="mobile-ai-question" rows="2" placeholder="예) 우리금융보다 높은 곳 알려줘"></textarea>
+            <button id="mobile-ai-send" class="primary-btn">질문</button>
+          </div>
+
+          <div id="mobile-ai-answer" class="ai-answer">
+            질문하면 선택한 상품의 최신 시장 데이터를 기준으로 답변합니다.
+          </div>
+        </article>
+      </section>
+
+      <section id="products" class="section-block">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">PRODUCTS</span>
+            <h2>전체 상품 조회</h2>
+          </div>
+        </div>
+
+        <article class="panel-card">
+          <div class="product-filter-row">
+            <input id="mobile-product-search" type="search" placeholder="저축은행명 또는 실제 상품명 검색" />
+          </div>
+          <div id="mobile-product-list" class="product-list"></div>
+          <div id="mobile-source-note" class="source-note">
+            데이터 출처를 확인하고 있습니다.
+          </div>
+        </article>
+      </section>
+
+      <section id="more" class="section-block last-section">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">SYSTEM</span>
+            <h2>더보기</h2>
+          </div>
+        </div>
+
+        <article class="panel-card more-list">
+          <button id="mobile-error-report">🛠 오류 제보</button>
+          <a href="/" class="more-link">🖥 PC 대시보드 열기</a>
+          <div class="version-row"><span>Mobile Version</span><strong>V1.5 Stable</strong></div>
+        </article>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <a href="#home" class="nav-item is-active" data-section="home"><span>⌂</span><b>홈</b></a>
+      <a href="#market" class="nav-item" data-section="market"><span>▥</span><b>시장</b></a>
+      <a href="#ai" class="nav-item" data-section="ai"><span>✦</span><b>AI</b></a>
+      <a href="#products" class="nav-item" data-section="products"><span>≡</span><b>상품</b></a>
+      <a href="#more" class="nav-item" data-section="more"><span>•••</span><b>더보기</b></a>
+    </nav>
+
+    <div id="mobile-toast" class="toast"></div>
+
+
+    <div id="mobile-report-modal" class="modal-backdrop hidden">
+      <div class="mobile-modal report-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">EXECUTIVE REPORT</span>
+            <h3 id="mobile-report-title">AI 시장분석 보고서</h3>
+            <small id="mobile-report-basis" class="modal-basis">데이터 기준 -</small>
+          </div>
+          <button id="mobile-report-close" class="icon-btn">×</button>
+        </div>
+
+        <div class="report-toolbar">
+          <button id="mobile-report-pdf" class="primary-btn report-download-btn">PDF 다운로드</button>
+        </div>
+
+        <div class="modal-body report-body">
+          <div id="mobile-report-content">
+            <div class="loading">보고서를 준비하고 있습니다.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mobile-error-modal" class="modal-backdrop hidden">
+      <div class="mobile-modal">
+        <div class="modal-head">
+          <div>
+            <span class="eyebrow">FEEDBACK</span>
+            <h3>오류 제보</h3>
+          </div>
+          <button id="mobile-error-close" class="icon-btn">×</button>
+        </div>
+        <div class="modal-body">
+          <select id="mobile-error-type">
+            <option>데이터 오류</option>
+            <option>화면/레이아웃</option>
+            <option>AI 답변</option>
+            <option>속도/접속</option>
+            <option>기타</option>
+          </select>
+          <textarea id="mobile-error-message" rows="5" placeholder="오류 내용을 입력해주세요."></textarea>
+          <button id="mobile-error-submit" class="primary-btn full-btn">제보 등록</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/static/js/mobile.js"></script>
+</body>
+</html>

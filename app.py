@@ -32,6 +32,18 @@ def index():
 
 
 
+
+# -------------------------------
+# Mobile Dashboard V1
+# -------------------------------
+
+@app.route("/mobile")
+def mobile_dashboard():
+    return render_template(
+        "mobile.html"
+    )
+
+
 # -------------------------------
 # 기본 경로 설정
 # -------------------------------

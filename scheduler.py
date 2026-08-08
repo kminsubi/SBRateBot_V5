@@ -31,77 +31,64 @@ BASE_DIR = os.path.dirname(
 def run_crawler():
 
     print()
-
+    print("=" * 60)
+    print("SBRateBot 통합 데이터 업데이트 시작")
+    print(datetime.now())
     print("=" * 60)
 
-    print(
-        "자동 금리 업데이트 시작"
-    )
+    jobs = [
+        (
+            "정기예금",
+            os.path.join(BASE_DIR, "crawler", "fsb.py")
+        ),
+        (
+            "ISA / 퇴직연금(IRP)",
+            os.path.join(BASE_DIR, "crawler", "pension_rates.py")
+        ),
+    ]
 
-    print(
-        datetime.now()
-    )
+    results = []
 
+    for name, script_path in jobs:
+
+        print()
+        print("-" * 60)
+        print(f"[{name}] 업데이트 시작")
+        print("실행 파일:", script_path)
+
+        if not os.path.exists(script_path):
+            print(f"[{name}] 실행 파일 없음 - 건너뜀")
+            results.append((name, False, "실행 파일 없음"))
+            continue
+
+        try:
+            subprocess.run(
+                [sys.executable, script_path],
+                cwd=BASE_DIR,
+                check=True
+            )
+
+            print(f"[{name}] 업데이트 완료")
+            results.append((name, True, "완료"))
+
+        except subprocess.CalledProcessError as e:
+            print(f"[{name}] 업데이트 실패:", e)
+            results.append((name, False, str(e)))
+
+        except Exception as e:
+            print(f"[{name}] 업데이트 오류:", e)
+            results.append((name, False, str(e)))
+
+    print()
     print("=" * 60)
+    print("SBRateBot 통합 데이터 업데이트 결과")
 
+    for name, success, message in results:
+        status = "OK" if success else "FAIL"
+        print(f"{name}: {status} ({message})")
 
-
-    try:
-
-
-        crawler_path = os.path.join(
-
-            BASE_DIR,
-
-            "crawler",
-
-            "fsb.py"
-
-        )
-
-
-
-        print(
-            "실행 파일:",
-            crawler_path
-        )
-
-
-
-        subprocess.run(
-
-            [
-
-                sys.executable,
-
-                crawler_path
-
-            ],
-
-            check=True
-
-        )
-
-
-
-        print()
-
-        print(
-            "자동 금리 업데이트 완료"
-        )
-
-
-
-    except Exception as e:
-
-
-        print()
-
-        print(
-            "자동 업데이트 실패:",
-            e
-        )
-
+    print("완료 시각:", datetime.now())
+    print("=" * 60)
 
 
 # ==========================================
@@ -130,7 +117,7 @@ def start_scheduler():
 
         minute=30,
 
-        id="daily_rate_update",
+        id="daily_sbratebot_update",
 
         replace_existing=True
 
@@ -150,5 +137,5 @@ def start_scheduler():
 
 
     print(
-        "업데이트 시간 : 매일 00:30"
+        "업데이트 시간 : 매일 00:30 (정기예금 → ISA/퇴직연금 순차 실행)"
     )
