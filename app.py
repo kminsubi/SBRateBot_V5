@@ -12,6 +12,7 @@ from prompt import get_prompt, detect_prompt_type
 import json
 import os
 import re
+from datetime import datetime
 
 
 
@@ -2674,56 +2675,6 @@ def api_woori():
     )
 
     # -------------------------------
-    # DEBUG
-    # 12개월 상품 확인
-    # -------------------------------
-
-    print(
-        "=" * 60
-    )
-
-    print(
-        "우리 포함 상품"
-    )
-
-    print(
-        "=" * 60
-    )
-
-    for item in products:
-
-        bank = (
-            item.get("bank")
-            or ""
-        )
-
-        if "우리" in bank:
-
-            print(
-
-                bank,
-
-                "|",
-
-                item.get("product"),
-
-                "|",
-
-                item.get("period"),
-
-                "|",
-
-                item.get("rate")
-
-            )
-
-    print(
-        "=" * 60
-    )
-
-
-
-    # -------------------------------
     # 우리금융 최고금리 상품
     # -------------------------------
 
@@ -2807,92 +2758,6 @@ def api_woori():
     )
 
 
-    print(
-
-        "은행 순위 TOP10:",
-
-        bank_rank_list[:10]
-
-    )
-
-
-    print(
-
-        "은행 개수:",
-
-        len(bank_rank_list)
-
-    )
-
-        # -------------------------------
-    # 3.8% 이상 은행 확인
-    # -------------------------------
-
-    count = 0
-
-    for bank, rate in bank_rank_list:
-
-        if rate > 3.8:
-
-            count += 1
-
-    print(
-
-        "3.8% 초과 은행 :",
-
-        count
-
-    )
-
-
-
-    same = []
-
-    for bank, rate in bank_rank_list:
-
-        if rate == 3.8:
-
-            same.append(
-
-                (
-
-                    bank,
-
-                    rate
-
-                )
-
-            )
-
-
-
-    print(
-
-        "3.8% 은행 개수 :",
-
-        len(same)
-
-    )
-
-
-
-    print(
-
-        "3.8% 은행 목록"
-
-    )
-
-
-
-    for item in same:
-
-        print(
-
-            item
-
-        )
-
-
     # -------------------------------
     # 우리금융저축은행 시장 순위 계산
     # 우리저축은행과 절대 분리
@@ -2950,33 +2815,13 @@ def api_woori():
 
 
 
-            print(
-
-                "우리금융 순위 확인:",
-
-                idx,
-
-                item
-
-            )
 
 
-            print(
 
-                "동일 금리 은행 수:",
 
-                same_rank_count
-
-            )
 
 
             break
-
-    if market_rank == "-":
-
-        print(
-            "우리금융 순위 미확인"
-        )
 
         # -------------------------------
     # 시장 평균 / 최고 / 최저
@@ -9904,6 +9749,120 @@ def api_pension():
         "count": len(items),
         "items": items
     })
+
+
+
+# -------------------------------
+# 오류 제보센터 V5.10
+# -------------------------------
+
+ERROR_REPORT_FILE = os.path.join(
+    BASE_DIR,
+    "data",
+    "error_reports.json"
+)
+
+
+@app.route("/api/error-report", methods=["POST"])
+def api_error_report():
+    try:
+        payload = request.get_json(silent=True) or {}
+
+        message = str(payload.get("message", "")).strip()
+        if not message:
+            return jsonify({
+                "ok": False,
+                "error": "message_required"
+            }), 400
+
+        now = datetime.now()
+        report_id = "ERR-" + now.strftime("%Y%m%d-%H%M%S-%f")[:20]
+
+        report = {
+            "id": report_id,
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "app_version": "V5.11.5",
+            "category": str(payload.get("category", "")).strip(),
+            "product": str(payload.get("product", "")).strip(),
+            "period": str(payload.get("period", "")).strip(),
+            "error_type": str(payload.get("error_type", "기타")).strip(),
+            "message": message,
+            "page_url": str(payload.get("page_url", "")).strip(),
+            "user_agent": str(payload.get("user_agent", "")).strip()
+        }
+
+        reports = []
+
+        if os.path.exists(ERROR_REPORT_FILE):
+            try:
+                with open(ERROR_REPORT_FILE, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, list):
+                        reports = loaded
+            except Exception:
+                reports = []
+
+        reports.append(report)
+
+        os.makedirs(
+            os.path.dirname(ERROR_REPORT_FILE),
+            exist_ok=True
+        )
+
+        temp_file = ERROR_REPORT_FILE + ".tmp"
+
+        with open(temp_file, "w", encoding="utf-8") as f:
+            json.dump(
+                reports,
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+        os.replace(
+            temp_file,
+            ERROR_REPORT_FILE
+        )
+
+        return jsonify({
+            "ok": True,
+            "id": report_id
+        })
+
+    except Exception as e:
+        print("ERROR REPORT SAVE ERROR:", e)
+
+        return jsonify({
+            "ok": False,
+            "error": "save_failed"
+        }), 500
+
+
+@app.route("/api/error-reports")
+def api_error_reports():
+    try:
+        if not os.path.exists(ERROR_REPORT_FILE):
+            return jsonify({
+                "count": 0,
+                "items": []
+            })
+
+        with open(ERROR_REPORT_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if not isinstance(data, list):
+            data = []
+
+        return jsonify({
+            "count": len(data),
+            "items": list(reversed(data))
+        })
+
+    except Exception:
+        return jsonify({
+            "count": 0,
+            "items": []
+        })
 
 
 # -------------------------------

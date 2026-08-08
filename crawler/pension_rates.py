@@ -58,16 +58,26 @@ def woori_isa(bank,kind,cfg):
     return o
 
 def woori_irp(bank,kind,cfg):
-    # 우리금융저축은행 공식 상품목록 기준
-    # DC형 / IRP형 대표 12개월 금리만 우선 사용
-    # 기간별 공식 표가 확보되기 전까지 나머지는 None 유지
+    """
+    우리금융 퇴직연금(IRP) 최신 월 fallback.
+
+    2026-08 적용 IRP/DC·IRP 약정금리:
+    - 12개월 3.70%
+    - 24개월 3.60%
+    - 36개월 3.00%
+
+    중요:
+    이후 merge_irp_disclosure()에서 KB 타사제공상품의
+    최신 월 공시값이 존재하면 이 fallback보다 공시값을 우선한다.
+    따라서 다음달에도 4.00% 같은 과거값을 고정해서 사용하지 않는다.
+    """
 
     rates = {
         "3m": None,
         "6m": None,
-        "12m": 4.00,
-        "24m": None,
-        "36m": None,
+        "12m": 3.70,
+        "24m": 3.60,
+        "36m": 3.00,
     }
 
     o = blank(
@@ -78,10 +88,14 @@ def woori_irp(bank,kind,cfg):
     )
 
     o["rates"] = rates
+    o["rate_month"] = "2026-08"
+    o["rate_type"] = "IRP/DC·IRP"
+    o["effective_date"] = "2026-08-01"
 
     o["note"] = (
-        "우리금융저축은행 공식 상품목록 "
-        "DC형/IRP형 12개월 대표금리"
+        "우리금융저축은행 퇴직연금(IRP) "
+        "2026-08 적용 DC/IRP 약정금리. "
+        "사업자 최신 월 공시가 있으면 해당 공시값을 우선 적용."
     )
 
     return o
@@ -624,6 +638,10 @@ def hana_irp(bank,kind,cfg):
     o["rates"]=rates
     o["source_url"]=final_url
     o["note"]="하나저축은행 공식 퇴직연금 정기예금 DC/IRP형 연이율"
+    o["rate_month"]="2026-08"
+    o["rate_type"]="IRP/DC·IRP"
+    o["rate_basis"]="IRP/DC·IRP 약정금리"
+    o["disclosure_date_source"]="hana_official_current_rate_month_basis"
     return o
 
 
@@ -2533,53 +2551,223 @@ def load_irp_disclosure():
     return banks if isinstance(banks,dict) else {}
 
 
+
+def _month_from_iso_date(value):
+    text=clean(value)
+    m=re.match(r"^(\d{4})-(\d{2})",text)
+    return f"{m.group(1)}-{m.group(2)}" if m else None
+
+
+def _next_month(month_value):
+    text=clean(month_value)
+    m=re.match(r"^(\d{4})-(\d{2})$",text)
+    if not m:
+        return None
+
+    year=int(m.group(1))
+    month=int(m.group(2))
+
+    month+=1
+    if month>12:
+        year+=1
+        month=1
+
+    return f"{year:04d}-{month:02d}"
+
+
+def _kb_monthly_rate_month(item):
+    """
+    KB퇴직연금 타사제공상품은 통상 다음달 적용금리를
+    전월 말에 게시한다.
+
+    명확한 rate_month가 있으면 그것을 사용하고,
+    KB 타사제공 공시일이 월말(20일 이후)이면 다음달 적용월로 본다.
+    이 규칙은 KB 타사제공상품 source에만 제한한다.
+    """
+    explicit=clean(item.get("rate_month"))
+
+    if re.match(r"^\d{4}-\d{2}$",explicit):
+        return explicit
+
+    date_value=clean(
+        item.get("disclosure_date")
+        or item.get("reference_date")
+        or item.get("effective_date")
+    )
+
+    m=re.match(
+        r"^(\d{4})-(\d{2})-(\d{2})$",
+        date_value
+    )
+
+    if not m:
+        return None
+
+    month_value=f"{m.group(1)}-{m.group(2)}"
+    day=int(m.group(3))
+
+    return (
+        _next_month(month_value)
+        if day>=20
+        else month_value
+    )
+
+
+def apply_irp_latest_month_metadata(item):
+    """
+    IRP 항목에 최신월/기준 메타데이터를 붙인다.
+
+    우선순위:
+      1) rate_month
+      2) effective_date
+      3) reference_date
+      4) 공식 disclosure_date
+      5) KB 타사제공 월말 공시 -> 다음달 적용월
+    """
+    if not isinstance(item,dict):
+        return item
+
+    if clean(item.get("category")).upper()!="IRP":
+        return item
+
+    if not item.get("rate_type"):
+        item["rate_type"]="IRP/DC·IRP"
+
+    rate_month=clean(item.get("rate_month"))
+
+    if not re.match(r"^\d{4}-\d{2}$",rate_month):
+        rate_month=(
+            _month_from_iso_date(item.get("effective_date"))
+            or _month_from_iso_date(item.get("reference_date"))
+        )
+
+    sources=item.get("disclosure_sources",[])
+
+    has_kb_monthly=any(
+        isinstance(source,dict)
+        and clean(source.get("source_name"))=="KB퇴직연금_타사제공상품"
+        for source in sources
+    )
+
+    if not rate_month and has_kb_monthly:
+        rate_month=_kb_monthly_rate_month(item)
+
+    if not rate_month:
+        rate_month=_month_from_iso_date(
+            item.get("disclosure_date")
+        )
+
+    if rate_month:
+        item["rate_month"]=rate_month
+
+    item["rate_basis"]="IRP/DC·IRP 약정금리"
+
+    return item
+
+
 def merge_irp_disclosure(bank,current,disclosure_banks):
     """
-    사업자 공시에서 확인된 IRP 금리가 있으면
-    기존 None 값만 채운다.
+    퇴직연금 IRP 사업자 공시 병합.
 
-    기존 verified_official 값을 덮어쓰지 않는다.
+    기존 v5.6:
+      None 값만 fill -> 우리금융 7월 4.00%가 남고
+      최신 8월 사업자 공시 3.70%가 있어도 덮어쓰지 못함.
+
+    v5.8:
+      - KB 타사제공상품을 주 데이터로 쓰는 은행은
+        최신 공시의 non-null IRP 금리를 우선 적용.
+      - 공식 API/공식 상세페이지에서 8월 금리를 직접 수집하는
+        KB/신한/OK/웰컴/애큐온/다올/하나는 기존 공식값 우선.
     """
     disc=disclosure_banks.get(bank)
 
     if not isinstance(disc,dict):
-        return current
+        return apply_irp_latest_month_metadata(current)
 
     disc_rates=disc.get("rates",{})
 
     if not isinstance(disc_rates,dict):
-        return current
+        return apply_irp_latest_month_metadata(current)
 
     rates=current.setdefault(
         "rates",
         {f"{p}m":None for p in IRP_PERIODS}
     )
 
-    added=0
+    # KB 타사제공상품이 사실상 최신 IRP 금리원인 은행들.
+    disclosure_primary_banks={
+        "우리금융",
+        "SBI",
+        "DB",
+        "JT친애",
+        "NH",
+    }
+
+    changed=0
 
     for key in ("3m","6m","12m","24m","36m"):
         incoming=disc_rates.get(key)
 
+        if incoming is None:
+            continue
+
         if (
-            rates.get(key) is None
-            and incoming is not None
+            bank in disclosure_primary_banks
+            or rates.get(key) is None
         ):
-            rates[key]=incoming
-            added+=1
+            if rates.get(key)!=incoming:
+                rates[key]=incoming
+                changed+=1
 
-    if added:
+    sources=disc.get("sources",[])
+    if isinstance(sources,list) and sources:
+        current["disclosure_sources"]=sources
+
+    # 공시원천에 상품명이 있고 현재 상품명이 비어 있으면
+    # 원천값(예: DB저축은행/정기예금)의 '/' 뒤 실제 공시상품명을 사용한다.
+    if not clean(current.get("product")) and isinstance(sources,list):
+        for source in sources:
+            if not isinstance(source,dict):
+                continue
+            source_product=clean(source.get("product"))
+            if not source_product:
+                continue
+            if "/" in source_product:
+                source_product=clean(source_product.split("/",1)[1])
+            if source_product:
+                current["product"]=source_product
+                break
+
+    if disc.get("status"):
         current["disclosure_status"]=disc.get("status")
-        current["disclosure_sources"]=disc.get("sources",[])
 
-        if current.get("status") in (
-            "research_pending",
-            "parser_pending",
-            "verified_source_rate_pending",
-            "rate_not_found",
-        ):
-            current["status"]="verified_disclosure_merged"
+    if changed and current.get("status") in (
+        "research_pending",
+        "parser_pending",
+        "verified_source_rate_pending",
+        "rate_not_found",
+        "verified_official_partial",
+    ):
+        current["status"]="verified_disclosure_merged"
 
-    return current
+    # 공시 파일에 월/기준일이 있으면 보존
+    for field in (
+        "rate_month",
+        "effective_date",
+        "reference_date",
+        "disclosure_date",
+    ):
+        if disc.get(field):
+            current[field]=disc.get(field)
+
+    if bank in disclosure_primary_banks and changed:
+        current["rate_type"]="IRP/DC·IRP"
+        current["note"]=(
+            clean(current.get("note"))
+            + " | 최신 사업자 IRP 공시값 우선 적용"
+        ).strip(" |")
+
+    return apply_irp_latest_month_metadata(current)
 
 
 
@@ -3632,7 +3820,7 @@ def main():
     disclosure_banks=load_irp_disclosure()
 
     print("="*72)
-    print("SBRateBot V5 ISA / IRP Collector v5.6 - Welcome Integrated Final")
+    print("SBRateBot V5 ISA / IRP Collector v5.8 - Latest IRP Month")
     print("="*72)
 
     for i,(bank,cfg) in enumerate(mp["banks"].items(),1):
@@ -3691,6 +3879,9 @@ def main():
 
         x=enrich_disclosure_date_v53(x)
         y=enrich_disclosure_date_v53(y)
+
+        # IRP 최신 적용월 / IRP 기준 메타데이터 최종 확정
+        y=apply_irp_latest_month_metadata(y)
 
         # 한국투자 공시일은 공식 자동수집 안정성이 확보될 때까지 공란 유지.
         # 금리 수집 성공 여부와는 별개로 잘못된 날짜를 표시하지 않는다.

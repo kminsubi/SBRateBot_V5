@@ -91,6 +91,15 @@ function displayBankName(name){
         .trim();
 }
 
+function formatDisclosureDate(value){
+    const text=String(value || "").trim();
+    if(!text) return "";
+    return text
+        .replace(/\s*기준\s*$/g,"")
+        .replace(/\s{2,}/g," ")
+        .trim();
+}
+
 
 
 window.sbLastAIQuestion = window.sbLastAIQuestion || "";
@@ -126,7 +135,9 @@ document.addEventListener(
         );
 
 
-        initDashboard();
+        initDashboard().catch(error => {
+            console.error("DASHBOARD INIT ERROR:", error);
+        });
 
 
     }
@@ -143,8 +154,8 @@ function updateMarketProductTabs(){
     document.querySelectorAll("[data-market-product]").forEach(button=>{
         const active=button.dataset.marketProduct===activeMarketProduct;
         button.className=active
-            ?"market-product-tab bg-[#1a58c8] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm"
-            :"market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700";
+            ?"market-product-tab bg-[#1a58c8] text-white px-4 py-1.5 rounded-lg text-[11px] font-bold shadow-sm"
+            :"market-product-tab text-gray-500 px-4 py-1.5 rounded-lg text-[11px] font-semibold hover:bg-white hover:text-blue-700";
     });
 }
 
@@ -243,11 +254,48 @@ function renderAlternativeHero(items){
     const label=marketProductLabel(), top=valid[0];
     const summary=document.getElementById("executive-summary-mini");
     if(summary){
-        summary.innerHTML=`<div class="space-y-1.5">
-          <div><b>${label} 최고금리</b> ${top?`${displayBankName(top.bank)} ${Number(top.rate).toFixed(2)}%`:"-"}</div>
-          <div><b>우리금융</b> ${woori?`${Number(woori.rate).toFixed(2)}% · ${rank}위/${total}`:"금리 확인 필요"}</div>
-          <div><b>시장 평균</b> ${avg!=null?`${avg.toFixed(2)}%`:"-"}</div>
-          <div class="text-gray-400">공시일 확인 ${disclosed}/${items.length}개 기관</div>
+        const second=valid.find(item => !woori || normalizeBankCore(item.bank)!==normalizeBankCore(woori.bank));
+        const top5=valid.slice(0,5);
+        const top5Avg=top5.length
+            ? top5.reduce((sum,item)=>sum+Number(item.rate||0),0)/top5.length
+            : null;
+        const gapTop=Number.isFinite(wr)&&Number.isFinite(max)?wr-max:null;
+        const gapAvg=Number.isFinite(wr)&&Number.isFinite(avg)?wr-avg:null;
+        const gapSecond=woori&&second&&Number.isFinite(wr)
+            ? wr-Number(second.rate)
+            : null;
+
+        let positionText="우리금융 금리 확인이 필요합니다.";
+        if(woori){
+            if(rank===1 && gapSecond!==null){
+                positionText=`우리금융 ${wr.toFixed(2)}%로 1위이며 2위 ${displayBankName(second.bank)} 대비 ${Math.abs(gapSecond).toFixed(2)}%p ${gapSecond>=0?"높습니다":"낮습니다"}.`;
+            }else{
+                positionText=`우리금융 ${wr.toFixed(2)}%로 ${rank}위/${total}, 시장 최고 대비 ${gapTop===null?"-":Math.abs(gapTop).toFixed(2)+"%p"} ${gapTop!==null&&gapTop<0?"낮은":"수준"}입니다.`;
+            }
+        }
+
+        const avgText=gapAvg===null
+            ? ""
+            : gapAvg>0
+                ? `시장 평균 대비 +${gapAvg.toFixed(2)}%p`
+                : gapAvg<0
+                    ? `시장 평균 대비 ${gapAvg.toFixed(2)}%p`
+                    : "시장 평균과 동일";
+
+        summary.innerHTML=`<div class="space-y-2 [word-break:keep-all]">
+          <div>
+            <div class="text-[10px] font-bold text-blue-700 mb-0.5">💡 AI 의견</div>
+            <div class="text-[11px] leading-[1.5] text-gray-700">${positionText} ${avgText}${avgText?".":""}</div>
+          </div>
+          <div class="border-t border-gray-100 pt-2">
+            <div class="text-[10px] font-bold text-gray-700 mb-1">📊 경쟁 구조</div>
+            <div class="text-[10px] leading-[1.55] text-gray-500">
+              상위5 평균 <b class="text-gray-700">${top5Avg!=null?top5Avg.toFixed(2)+"%":"-"}</b>
+              · 시장최고 <b class="text-blue-700">${top?displayBankName(top.bank)+" "+Number(top.rate).toFixed(2)+"%":"-"}</b><br>
+              공시일 확인 <b class="text-gray-700">${disclosed}/${items.length}개 기관</b>
+              · 상위권 금리와 당행 Gap을 우선 모니터링
+            </div>
+          </div>
         </div>`;
     }
     setText("wibee-woori-rate",Number.isFinite(wr)?`${wr.toFixed(2)}%`:"-");
@@ -281,32 +329,60 @@ function renderAlternativeTop10(items){
         const tr = document.createElement("tr");
         const isWoori = isWooriBank(item.bank);
 
-        const rankClass = index < 3
-            ? "bg-orange-100 text-orange-600"
-            : isWoori
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-600";
-
         if(isWoori){
+            /*
+             * V5.11.6
+             * - colspan 내부의 실제 데이터 grid는 header와 동일한 12/40/22/26
+             * - 배경 레이어만 right:-10px
+             * - 데이터 좌표는 width:100% 기준이라 절대 이동하지 않음
+             */
             tr.innerHTML = `
-              <td colspan="4" class="py-1">
-                <div class="grid grid-cols-[15%_39%_21%_25%] items-center bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl py-2 px-2 mx-0.5">
-                  <div class="w-full text-center">
-                    <span class="${rankClass} w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold">${index+1}</span>
+              <td colspan="4" class="py-1 overflow-visible">
+                <div class="relative w-full overflow-visible">
+                  <div
+                    class="absolute inset-y-0 left-0 -right-[10px] rounded-[14px] border border-blue-300 bg-gradient-to-r from-blue-50 to-[#f3f8ff] pointer-events-none"
+                    aria-hidden="true"
+                  ></div>
+
+                  <div class="relative z-10 grid grid-cols-[12%_40%_22%_26%] items-center w-full py-2">
+                    <div class="text-center">
+                      <span class="${index<3 ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-700 ring-1 ring-blue-200"} min-w-5 h-5 px-1 rounded-full inline-flex items-center justify-center text-[10px] font-bold">
+                        ${index+1}
+                      </span>
+                    </div>
+
+                    <div class="text-center truncate px-1 font-bold text-blue-700" title="${item.bank}">
+                      ${displayBankName(item.bank)}
+                    </div>
+
+                    <div class="text-center font-bold text-blue-700">
+                      ${Number(item.rate).toFixed(2)}%
+                    </div>
+
+                    <div class="text-center text-xs font-semibold text-blue-700 whitespace-nowrap">
+                      ${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}
+                    </div>
                   </div>
-                  <div class="w-full text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</div>
-                  <div class="w-full text-center font-semibold">${Number(item.rate).toFixed(2)}%</div>
-                  <div class="w-full text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</div>
                 </div>
               </td>`;
         }else{
+            const rankClass = index < 3
+                ? "bg-orange-100 text-orange-600"
+                : "bg-gray-100 text-gray-600";
+
             tr.innerHTML = `
               <td class="py-2 text-center">
-                <span class="${rankClass} w-4 h-4 rounded-full inline-flex items-center justify-center text-[10px] font-bold">${index+1}</span>
+                <span class="${rankClass} min-w-5 h-5 px-1 rounded-full inline-flex items-center justify-center text-[10px] font-bold">${index+1}</span>
               </td>
-              <td class="py-2 text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</td>
-              <td class="py-2 text-center font-semibold text-blue-600">${Number(item.rate).toFixed(2)}%</td>
-              <td class="py-2 text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</td>`;
+              <td class="py-2 text-center truncate px-1" title="${item.bank}">
+                ${displayBankName(item.bank)}
+              </td>
+              <td class="py-2 text-center font-semibold text-blue-600">
+                ${Number(item.rate).toFixed(2)}%
+              </td>
+              <td class="py-2 text-center text-xs font-semibold whitespace-nowrap">
+                ${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}
+              </td>`;
         }
 
         (index < 5 ? b1 : b2).appendChild(tr);
@@ -356,12 +432,25 @@ function renderAlternativeSideCards(items){
             if(isWooriBank(item.bank)){
                 return `
                   <tr>
-                    <td colspan="4" class="py-1">
-                      <div class="grid grid-cols-[14%_38%_22%_26%] items-center bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl py-2 px-2 mx-0.5">
-                        <div class="text-center">${index+1}</div>
-                        <div class="text-center truncate px-1" title="${item.bank}">${displayBankName(item.bank)}</div>
-                        <div class="text-center">${Number(item.rate).toFixed(2)}%</div>
-                        <div class="text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</div>
+                    <td colspan="4" class="py-1 overflow-visible">
+                      <div class="relative w-full overflow-visible">
+                        <div
+                          class="absolute inset-y-0 left-0 -right-[10px] rounded-[14px] border border-blue-300 bg-gradient-to-r from-blue-50 to-[#f3f8ff] pointer-events-none"
+                          aria-hidden="true"
+                        ></div>
+
+                        <div class="relative z-10 grid grid-cols-[14%_38%_22%_26%] items-center w-full py-2">
+                          <div class="text-center font-bold text-blue-700">${index+1}</div>
+                          <div class="text-center truncate px-1 font-bold text-blue-700" title="${item.bank}">
+                            ${displayBankName(item.bank)}
+                          </div>
+                          <div class="text-center font-bold text-blue-700">
+                            ${Number(item.rate).toFixed(2)}%
+                          </div>
+                          <div class="text-center text-xs font-semibold whitespace-nowrap text-blue-700">
+                            ${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>`;
@@ -372,7 +461,7 @@ function renderAlternativeSideCards(items){
                 <td class="py-2 text-center text-gray-500">${index+1}</td>
                 <td class="py-2 text-center truncate px-1 text-gray-700" title="${item.bank}">${displayBankName(item.bank)}</td>
                 <td class="py-2 text-center font-semibold text-blue-700">${Number(item.rate).toFixed(2)}%</td>
-                <td class="py-2 text-center text-xs font-normal text-gray-500 whitespace-nowrap">${item.disclosure_date || "-"}</td>
+                <td class="py-2 text-center text-xs font-semibold whitespace-nowrap">${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}</td>
               </tr>`;
           }).join("")
         : '<tr><td colspan="4" class="py-4 text-center text-gray-400">공시일 데이터 없음</td></tr>';
@@ -433,6 +522,8 @@ async function switchMarketProduct(mode){
     activeMarketProduct = mode;
     currentMarketPeriod = currentSelectedPeriod() || "12";
 
+    markAIAnalysisCenterSyncing();
+
     updateMarketProductTabs();
     updateMarketProductLabels();
     updateAlternativeHeaders();
@@ -491,52 +582,31 @@ async function switchMarketProduct(mode){
 
 
 function syncAIAnalysisCenterHeight(){
-    const mainColumn = document.querySelector("main.col-span-9");
-    const heroStart = document.getElementById("dashboard-hero-start");
-    const marketRow = document.getElementById("market-ranking-row");
+    /*
+      V5.11
+      AI센터 높이는 더 이상 JS로 계산하지 않는다.
+      main(9col) + aside(3col)이 같은 CSS Grid row에 있으므로
+      브라우저가 좌측 전체 높이와 우측 패널 높이를 자동으로 동일하게 맞춘다.
+      상품 전환 시 누적 height / marginTop이 남지 않도록 inline style만 제거한다.
+    */
     const aiCenter = document.getElementById("ai-analysis-center");
+    if(!aiCenter) return;
 
-    if(!mainColumn || !heroStart || !marketRow || !aiCenter){
-        return;
-    }
+    aiCenter.style.removeProperty("margin-top");
+    aiCenter.style.removeProperty("height");
+    aiCenter.style.removeProperty("min-height");
+    aiCenter.style.removeProperty("max-height");
+    aiCenter.style.removeProperty("overflow");
 
-    const applyHeight = () => {
-        const mainRect = mainColumn.getBoundingClientRect();
-        const heroRect = heroStart.getBoundingClientRect();
-        const marketRect = marketRow.getBoundingClientRect();
+    aiCenter.classList.remove("ai-syncing");
+    aiCenter.classList.add("ai-synced");
+}
 
-        // AI센터 시작 = HERO 시작
-        const topOffset = Math.max(
-            0,
-            Math.round(heroRect.top - mainRect.top)
-        );
-
-        // AI센터 종료 = TOP10 / TOP5 패널 하단
-        const exactHeight = Math.max(
-            0,
-            Math.round(marketRect.bottom - heroRect.top)
-        );
-
-        aiCenter.style.marginTop = `${topOffset}px`;
-        aiCenter.style.height = `${exactHeight}px`;
-        aiCenter.style.maxHeight = `${exactHeight}px`;
-        aiCenter.style.minHeight = `${exactHeight}px`;
-        aiCenter.style.overflow = "hidden";
-    };
-
-    requestAnimationFrame(applyHeight);
-
-    if(window.sbMarketRowResizeObserver){
-        window.sbMarketRowResizeObserver.disconnect();
-    }
-
-    window.sbMarketRowResizeObserver = new ResizeObserver(() => {
-        requestAnimationFrame(applyHeight);
-    });
-
-    window.sbMarketRowResizeObserver.observe(heroStart);
-    window.sbMarketRowResizeObserver.observe(marketRow);
-    window.sbMarketRowResizeObserver.observe(mainColumn);
+function markAIAnalysisCenterSyncing(){
+    const aiCenter = document.getElementById("ai-analysis-center");
+    if(!aiCenter) return;
+    aiCenter.classList.remove("ai-syncing");
+    aiCenter.classList.add("ai-synced");
 }
 
 function setupMarketProductTabs(){
@@ -550,8 +620,7 @@ function setupMarketProductTabs(){
 ========================================================== */
 
 
-function initDashboard() {
-
+async function initDashboard() {
 
     console.log(
         "🔥 SBRateBot V5 Dashboard START"
@@ -559,73 +628,38 @@ function initDashboard() {
 
     setupMarketProductTabs();
 
-
-
-    /*
-        KPI DATA
-    */
-
-    fetchKPI();
-
-
-
-
-    /*
-        WOORI MARKET POSITION
-    */
-
-    fetchWooriData();
-
-
-
-
-    /*
-        HERO SECTION
-    */
-
-    loadHero();
-
-
-
-
-    /*
-        AI SUMMARY
-    */
-
-    fetchAISummary();
-
-
-    /*
-        WIBEE AI BRIEFING
-    */
-
-    fetchWibeeBriefing();
-
-
-    /*
-        MARKET TOP10
-    */
-
-    fetchRatesData();
-
-
-    /*
-        RATE CHANGE TOP5
-    */
-
-    fetchFinancialData();
-
-
-    /* AI ANALYSIS CENTER */
-    initAIAnalysisCenter();
-
-
     /*
         UI EVENT BINDING
     */
-
     setupEventListeners();
+    initDraggableModals();
+    initErrorReportCenter();
 
+    /*
+        AI ANALYSIS CENTER EVENT BINDING
+        - 내부에서 최초 market render 1회 실행
+    */
+    await initAIAnalysisCenter();
+
+    /*
+        IMPORTANT:
+        최초 접속도 사용자가 '정기예금' 탭을 다시 누른 것과
+        완전히 같은 데이터/레이아웃 경로를 사용한다.
+
+        기존에는 최초 로딩 시 여러 fetch가 병렬 실행되면서
+        AI센터 높이 계산 타이밍이 먼저 잡혀 패널이 길어졌고,
+        탭을 다시 누르면 정상화되는 현상이 있었다.
+    */
+    await switchMarketProduct("deposit");
+
+    /*
+        폰트/브라우저 최종 레이아웃 반영 뒤 재확정.
+        최초 접속에서만 발생하던 패널 길이 오차 방지.
+    */
+    requestAnimationFrame(syncAIAnalysisCenterHeight);
+    if(document.fonts && document.fonts.ready){
+        document.fonts.ready.then(() => requestAnimationFrame(syncAIAnalysisCenterHeight)).catch(()=>{});
+    }
 
 }
 
@@ -634,31 +668,51 @@ function initDashboard() {
    Common API Fetch
 ========================================================== */
 
+// 동일 API가 초기 렌더링 과정에서 여러 컴포넌트에 의해 반복 호출되는 것을 방지한다.
+// 정기예금 데이터는 스케줄러가 갱신하므로, 화면 초기화 중 짧은 시간은 같은 응답을 공유해도 안전하다.
+const sbApiCache = new Map();
+const sbApiInFlight = new Map();
+const SB_API_CACHE_MS = 5000;
+
+function clearDashboardApiCache(){
+    sbApiCache.clear();
+}
+
 async function apiFetch(url) {
 
-    try {
+    const now = Date.now();
+    const cached = sbApiCache.get(url);
 
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            throw new Error(
-                `API Error : ${response.status}`
-            );
-        }
-
-        return await response.json();
-
-
-    } catch(error) {
-
-        console.error(
-            "API Fetch Error:",
-            url,
-            error
-        );
-
-        return null;
+    if(cached && (now - cached.time) < SB_API_CACHE_MS){
+        return cached.data;
     }
+
+    if(sbApiInFlight.has(url)){
+        return sbApiInFlight.get(url);
+    }
+
+    const requestPromise = (async () => {
+        try {
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`API Error : ${response.status}`);
+            }
+
+            const data = await response.json();
+            sbApiCache.set(url, { time: Date.now(), data });
+            return data;
+
+        } catch(error) {
+            console.error("API Fetch Error:", url, error);
+            return null;
+        } finally {
+            sbApiInFlight.delete(url);
+        }
+    })();
+
+    sbApiInFlight.set(url, requestPromise);
+    return requestPromise;
 }
 
 
@@ -777,16 +831,63 @@ async function fetchAISummary(){
     */
 
 
-        const aiOpinion =
+        const maxRate = Number(
+        marketKpi.max_rate ??
+        marketKpi.highest_rate
+    );
 
-        summary
-            .slice(6)
-            .join("<br>")
-            .replace(
-                /은행별 금리 경쟁 차이가 큰 시장으로|평균금리는 3% 이상으로/g,
-                ""
-            )
-            .trim();
+    const avgRate = Number(
+        marketKpi.average_rate
+    );
+
+    const minRate = Number(
+        marketKpi.min_rate
+    );
+
+    const wooriRate = Number(
+        marketWoori.rate
+    );
+
+    const marketRank =
+        marketWoori.market_rank ??
+        marketWoori.rank ??
+        "-";
+
+    const gapToTop =
+        Number.isFinite(maxRate) &&
+        Number.isFinite(wooriRate)
+            ? wooriRate - maxRate
+            : null;
+
+    const gapToAverage =
+        Number.isFinite(avgRate) &&
+        Number.isFinite(wooriRate)
+            ? wooriRate - avgRate
+            : null;
+
+    const aiOpinion = (() => {
+        if(!Number.isFinite(wooriRate)){
+            return "우리금융 금리 데이터 확인 후 시장 상단과의 경쟁력 격차를 점검할 필요가 있습니다.";
+        }
+
+        const topText =
+            gapToTop === null
+                ? ""
+                : gapToTop === 0
+                    ? "시장 최고금리와 동일한 수준"
+                    : `시장 최고 대비 ${Math.abs(gapToTop).toFixed(2)}%p 낮은 수준`;
+
+        const avgText =
+            gapToAverage === null
+                ? ""
+                : gapToAverage > 0
+                    ? `시장 평균보다 ${gapToAverage.toFixed(2)}%p 높습니다`
+                    : gapToAverage < 0
+                        ? `시장 평균보다 ${Math.abs(gapToAverage).toFixed(2)}%p 낮습니다`
+                        : "시장 평균과 동일합니다";
+
+        return `우리금융은 ${marketRank}위 · ${wooriRate.toFixed(2)}%로 ${topText}이며, ${avgText}. 상위권 금리 조정과 당행 Gap 변화를 중심으로 모니터링이 필요합니다.`;
+    })();
 
 
 
@@ -1412,100 +1513,54 @@ leading-5
     */
 
 
+    const marketSpread =
+        Number.isFinite(maxRate) && Number.isFinite(minRate)
+            ? maxRate - minRate
+            : null;
+
     const marketData = `
-
-
-        <div class="text-xs text-gray-700 leading-5">
-
-
-            <div class="mb-1 text-xs font-bold text-gray-800">
-
+        <div class="text-[11px] text-gray-700 leading-5">
+            <div class="mb-1 text-[11px] font-bold text-gray-800">
                 📊 시장 현황
-
             </div>
 
-
-
-
-            <div class="flex">
-
-
-                <div class="flex-1">
-
-                    ${summary[1] || ""}
-
+            <div class="grid grid-cols-3 gap-x-4 gap-y-0.5">
+                <div class="whitespace-nowrap">
+                    <span class="text-gray-400">분석상품</span>
+                    <b class="ml-1">${Number(marketKpi.product_count || 0).toLocaleString()}개</b>
                 </div>
 
-
-
-                <div class="flex-1">
-
-                    ${summary[2] || ""}
-
+                <div class="whitespace-nowrap">
+                    <span class="text-gray-400">평균금리</span>
+                    <b class="ml-1">${Number.isFinite(avgRate) ? avgRate.toFixed(2) + "%" : "-"}</b>
                 </div>
 
-
-
-                <div class="flex-1">
-
-                    ${summary[5] || ""}
-
+                <div class="whitespace-nowrap">
+                    <span class="text-gray-400">금리 스프레드</span>
+                    <b class="ml-1">${marketSpread === null ? "-" : marketSpread.toFixed(2) + "%p"}</b>
                 </div>
 
-
-            </div>
-
-
-
-
-
-            <div class="flex items-center mt-1">
-
-
-                <div class="flex-1">
-
-                    ${summary[3] || ""}
-
+                <div class="whitespace-nowrap">
+                    <span class="text-gray-400">시장 최고</span>
+                    <b class="ml-1 text-blue-700">${Number.isFinite(maxRate) ? maxRate.toFixed(2) + "%" : "-"}</b>
                 </div>
 
-
-
-                <div class="flex-1">
-
-                    ${summary[4] || ""}
-
+                <div class="whitespace-nowrap">
+                    <span class="text-gray-400">우리금융</span>
+                    <b class="ml-1 text-blue-700">${Number.isFinite(wooriRate) ? wooriRate.toFixed(2) + "%" : "-"}</b>
                 </div>
 
-
-
-                <div class="flex-1 text-right">
-
-
+                <div class="text-right whitespace-nowrap">
                     <button
-
                         id="market-detail-btn"
-
-                        class="text-xs text-blue-600 font-semibold hover:underline"
-
+                        class="text-[11px] text-blue-600 font-semibold hover:underline"
                     >
-
-                        📊 AI 상세분석 보기 >
-
+                        AI 상세분석 &gt;
                     </button>
-
-
                 </div>
-
-
             </div>
-
-
-
         </div>
-
-
     `;
-
 
 
     /*
@@ -1527,7 +1582,7 @@ leading-5
 
 
 
-            <div class="text-xs text-gray-700 leading-5">
+            <div class="text-[11px] text-gray-700 leading-[1.45] [word-break:keep-all]">
 
 
                 ${
@@ -2070,6 +2125,7 @@ function setupHeaderRefresh(){
 
     btn.addEventListener("click", async () => {
         btn.disabled = true;
+        clearDashboardApiCache();
 
         try{
             await Promise.all([
@@ -2926,17 +2982,21 @@ function renderAllProductsTable(products){
     if(!tbody)return; tbody.innerHTML="";
     if(!Array.isArray(products)||!products.length){tbody.innerHTML='<tr><td colspan="6" class="py-6 text-center text-gray-400">조회 결과가 없습니다.</td></tr>';return;}
     products.forEach((item,index)=>{
-        const bank=productBankName(item)||"-", displayBank=displayBankName(bank), product=productName(item)||"-", period=productPeriod(item), rate=productRate(item), change=productChange(item), isW=bank.includes("우리금융");
+        const bank=productBankName(item)||"-", displayBank=displayBankName(bank);
+        const rawProduct=productName(item);
+        const product=rawProduct || (activeMarketProduct==="irp" ? "상품명 미수집" : "-");
+        const period=productPeriod(item), rate=productRate(item), change=productChange(item), isW=bank.includes("우리금융");
         let last='<span class="text-gray-400">-</span>';
         if(activeMarketProduct==="deposit"){
             if(change>0)last=`<span class="text-blue-600 font-semibold">+${change.toFixed(2)}%p</span>`;
             else if(change<0)last=`<span class="text-red-600 font-semibold">▲${Math.abs(change).toFixed(2)}%p</span>`;
             else last='<span class="text-gray-700">0.00%p</span>';
         }else{
-            last=item.disclosure_date?`<span class="text-gray-600">${item.disclosure_date}</span>`:'<span class="text-gray-400">-</span>';
+            const disclosure = formatDisclosureDate(item.disclosure_date || item.rate_month);
+            last=disclosure?`<span class="${isW ? "text-blue-700 font-bold" : "text-gray-600"}">${disclosure}</span>`:'<span class="text-gray-400">-</span>';
         }
         const tr=document.createElement("tr"); if(isW)tr.className="bg-blue-50/70 font-bold text-blue-700";
-        tr.innerHTML=`<td class="py-2 text-center">${index+1}</td><td class="py-2 text-center truncate px-1" title="${bank}">${displayBank}</td><td class="py-2 text-left truncate px-2" title="${product}">${product}</td><td class="py-2 text-center">${period?`${period}개월`:"-"}</td><td class="py-2 text-center font-semibold">${rate!=null?rate.toFixed(2)+"%":"-"}</td><td class="py-2 text-center whitespace-nowrap">${last}</td>`;
+        tr.innerHTML=`<td class="py-2 text-center">${index+1}</td><td class="py-2 text-center truncate px-1" title="${bank}">${displayBank}</td><td class="py-2 text-center truncate px-4" title="${product}">${product}</td><td class="py-2 text-center">${period?`${period}개월`:"-"}</td><td class="py-2 text-center font-semibold">${rate!=null?rate.toFixed(2)+"%":"-"}</td><td class="py-2 text-center whitespace-nowrap">${last}</td>`;
         tbody.appendChild(tr);
     });
 }
@@ -3079,17 +3139,17 @@ function buildExecutiveReportBase(data, dataBasis){
           </div>
 
           <div class="grid grid-cols-4 gap-2 p-3 bg-[#fbfdff] text-center">
-            <div class="er-metric">
-              <div class="er-metric-label">시장 평균</div>
-              <div class="er-metric-value">${aiCenterRate(kpi.average_rate)}</div>
+            <div class="er-metric bg-blue-50 border-blue-100">
+              <div class="er-metric-label text-blue-600">우리금융</div>
+              <div class="er-metric-value text-blue-700">${aiCenterRate(woori.rate)}</div>
             </div>
             <div class="er-metric">
               <div class="er-metric-label">시장 최고</div>
               <div class="er-metric-value text-blue-700">${aiCenterRate(top.rate ?? kpi.max_rate ?? kpi.highest_rate)}</div>
             </div>
             <div class="er-metric">
-              <div class="er-metric-label">우리금융</div>
-              <div class="er-metric-value">${aiCenterRate(woori.rate)}</div>
+              <div class="er-metric-label">시장 평균</div>
+              <div class="er-metric-value">${aiCenterRate(kpi.average_rate)}</div>
             </div>
             <div class="er-metric">
               <div class="er-metric-label">금리 변동</div>
@@ -3206,7 +3266,10 @@ async function openAIExecutiveReport(){
     if(basisEl) basisEl.textContent = `데이터 기준 ${dataBasis}`;
 
     const question =
-        `데이터 기준 ${dataBasis}. 정기예금 시장과 금융지주 저축은행 경쟁현황을 임원 관점에서 종합 판단해줘. 시장 평균 ${data.kpi.average_rate ?? "-"}%, 최고금리 ${data.kpi.max_rate ?? data.kpi.highest_rate ?? "-"}%, 우리금융 금리 ${data.woori.rate ?? "-"}%, 시장순위 ${data.woori.market_rank ?? "-"}위, 금융지주 순위 ${data.woori.financial_rank ?? "-"}위, 전일 변동 ${data.changes.change_count ?? 0}건이다. 핵심 리스크, 우리금융 시사점, 대응 포인트를 간결하게 작성해줘.`;
+        `데이터 기준 ${dataBasis}. ${marketProductLabel()} ${currentSelectedPeriod()}개월 시장을 임원 관점에서 분석해줘.
+시장 평균 ${data.kpi.average_rate ?? "-"}%, 최고금리 ${data.kpi.max_rate ?? data.kpi.highest_rate ?? "-"}%, 우리금융 금리 ${data.woori.rate ?? "-"}%, 시장순위 ${data.woori.market_rank ?? "-"}위, 금융지주 순위 ${data.woori.financial_rank ?? "-"}위다.
+중복 설명 없이 ① 시장상황 ② 우리금융 경쟁력 ③ 핵심 리스크 ④ 대응 포인트 순서로 각 1~2문장만 작성해줘.
+수치가 없는 내용은 추정하지 말고, ${marketProductLabel()} 데이터만 사용해줘.`;
 
     try{
         const response = await fetch("/api/ai/search", {
@@ -3604,7 +3667,7 @@ async function initAIAnalysisCenter(){
         });
     }
 
-    await renderAIAnalysisCenter("market");
+    // 최초 렌더는 switchMarketProduct()에서 실제 상품 데이터가 준비된 뒤 실행.
 }
 
 function updateAIAnalysisCenterTabs(){
@@ -3694,21 +3757,19 @@ function renderAlternativeAIAnalysisCenter(tab,data){
                   const disclosureDate =
                       item.disclosure_date ||
                       matched?.disclosure_date ||
-                      (
-                          String(item.bank || "").includes("하나")
-                              ? "미확인"
-                              : "-"
-                      );
+                      (item.rate_month ? `${item.rate_month}` : null) ||
+                      (matched?.rate_month ? `${matched.rate_month}` : null) ||
+                      "-";
 
                   const isWoori = String(item.bank).includes("우리금융");
 
                   return `
                     <div class="grid grid-cols-[30px_1fr_60px_76px] gap-2 px-2 py-1.5 rounded-xl items-center
-                      ${isWoori ? "bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl" : "bg-gray-50"}">
+                      ${isWoori ? "woori-highlight-row font-bold" : "bg-gray-50"}">
                       <span class="text-center">${item.rank}</span>
                       <span class="truncate text-center">${displayBankName(item.bank)}</span>
                       <span class="text-center">${aiCenterRate(item.rate)}</span>
-                      <span class="text-[10px] text-center">${disclosureDate}</span>
+                      <span class="text-[10px] text-center">${formatDisclosureDate(disclosureDate)}</span>
                     </div>`;
               }).join("") || '<div class="text-center text-gray-400 py-4">금융지주 데이터 없음</div>'}
             </div>
@@ -3751,11 +3812,11 @@ function renderAlternativeAIAnalysisCenter(tab,data){
                 .sort((a,b) => Number(b.rate) - Number(a.rate))
                 .slice(0,7)
                 .map((item,index) => `
-                  <div class="grid grid-cols-[30px_1fr_64px_76px] gap-2 px-2 py-1.5 mb-1 items-center ${isWooriBank(item.bank) ? "bg-blue-50 text-blue-700 font-bold ring-1 ring-blue-200 rounded-xl" : "bg-gray-50 rounded-lg"}">
-                    <span class="text-center text-gray-500">${index + 1}</span>
+                  <div class="grid grid-cols-[30px_1fr_64px_76px] gap-2 px-2 py-1.5 mb-1 items-center ${isWooriBank(item.bank) ? "woori-highlight-row font-bold" : "bg-gray-50 rounded-lg"}">
+                    <span class="text-center">${index + 1}</span>
                     <span class="truncate text-center">${displayBankName(item.bank)}</span>
                     <span class="font-semibold text-center">${aiCenterRate(item.rate)}</span>
-                    <span class="text-xs font-normal text-gray-400 text-center whitespace-nowrap">${item.disclosure_date || "-"}</span>
+                    <span class="text-[10px] font-semibold text-center whitespace-nowrap">${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}</span>
                   </div>`)
                 .join("") || '<div class="text-center text-gray-400 py-4">공시일 데이터 없음</div>'}
           </div>
@@ -3768,51 +3829,79 @@ function renderAlternativeAIAnalysisCenter(tab,data){
         return;
     }
 
+    const altTopRate = Number(rates?.[0]?.rate ?? kpi.max_rate);
+    const altWooriRate = Number(woori.rate);
+    const altAvgRate = Number(kpi.average_rate);
+    const altGap =
+        Number.isFinite(altTopRate) && Number.isFinite(altWooriRate)
+            ? altWooriRate - altTopRate
+            : null;
+    const altAvgGap =
+        Number.isFinite(altAvgRate) && Number.isFinite(altWooriRate)
+            ? altWooriRate - altAvgRate
+            : null;
+    const altTop5 = rates.slice(0,5);
+    const altTop5Avg = altTop5.length
+        ? altTop5.reduce((sum,item)=>sum+Number(item.rate||0),0)/altTop5.length
+        : null;
+    const altHigherCount = Number.isFinite(altWooriRate)
+        ? rates.filter(item => !isWooriBank(item.bank) && Number(item.rate)>altWooriRate).length
+        : 0;
+
     target.innerHTML = `
-    <div class="space-y-3">
-      <div class="grid grid-cols-2 gap-2 text-center">
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-[10px] text-gray-400">시장 평균</div>
-          <div class="text-base font-bold">${aiCenterRate(kpi.average_rate)}</div>
+    <div class="space-y-2.5">
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">우리금융 금리</div>
+          <div class="text-sm font-bold text-blue-700">${aiCenterRate(woori.rate)}</div>
         </div>
-        <div class="bg-blue-50 rounded-lg p-2">
-          <div class="text-[10px] text-gray-400">최고금리</div>
-          <div class="text-base font-bold text-blue-700">${aiCenterRate(kpi.max_rate)}</div>
+        <div class="bg-gray-50 border border-gray-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">시장순위</div>
+          <div class="text-sm font-bold">${woori.market_rank ?? "-"}위</div>
         </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-[10px] text-gray-400">수집기관</div>
-          <div class="text-base font-bold">${collectedBanks.length}개</div>
-        </div>
-        <div class="bg-gray-50 rounded-lg p-2">
-          <div class="text-[10px] text-gray-400">공시일 확인</div>
-          <div class="text-base font-bold">${changes.change_count ?? 0}개</div>
+        <div class="bg-gray-50 border border-gray-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">최고금리 Gap</div>
+          <div class="text-sm font-bold">${altGap === null ? "-" : aiCenterGap(altGap)}</div>
         </div>
       </div>
 
-      <div class="border border-gray-100 rounded-xl p-3">
-        <div class="font-bold text-gray-700 mb-2">🏦 전체 수집 저축은행</div>
-        <div class="flex flex-wrap gap-1.5">
-          ${collectedBanks.map(bank =>
-              `<span class="px-2 py-1 rounded-md bg-gray-50 border border-gray-100 text-[10px] text-gray-600">${displayBankName(bank)}</span>`
-          ).join("") || '<span class="text-gray-400">수집기관 없음</span>'}
+      <div class="border border-gray-100 rounded-xl p-2.5">
+        <div class="flex items-center justify-between mb-1.5">
+          <div class="font-bold text-gray-700">🏦 수집 저축은행</div>
+          <span class="text-[9px] text-gray-400">${collectedBanks.length}개 기관</span>
+        </div>
+        <div class="text-[9.5px] leading-[1.45] text-gray-500 [word-break:keep-all]">
+          ${collectedBanks.map(displayBankName).join(" · ") || "수집기관 없음"}
         </div>
       </div>
 
-      <div class="border border-gray-100 rounded-xl p-3">
-        <div class="font-bold text-gray-700 mb-2">🏆 ${label} TOP5</div>
-        <div class="space-y-1.5">
-          ${rates.slice(0,5).map(item => `
-            <div class="flex justify-between bg-gray-50 rounded-lg px-2.5 py-2">
-              <span>${item.rank}. ${displayBankName(item.bank)}</span>
-              <span class="font-bold">${aiCenterRate(item.rate)}</span>
-            </div>`
-          ).join("")}
+      <div class="border border-gray-100 rounded-xl p-2.5">
+        <div class="font-bold text-gray-700 mb-1.5">🏆 ${label} TOP5</div>
+        <div class="grid grid-cols-[34px_1fr_62px_78px] gap-2 px-2 pb-1 text-[9px] text-gray-400 text-center">
+          <span>순위</span><span>저축은행</span><span>금리</span><span>공시일</span>
+        </div>
+        <div class="space-y-1">
+          ${rates.slice(0,5).map(item => {
+              const isWoori = isWooriBank(item.bank);
+              return `
+                <div class="grid grid-cols-[34px_1fr_62px_78px] gap-2 items-center px-2 py-1.5
+                  ${isWoori ? "woori-highlight-row font-bold" : "bg-gray-50 rounded-lg"}">
+                  <span class="text-center">${item.rank ?? "-"}</span>
+                  <span class="text-center truncate">${displayBankName(item.bank)}</span>
+                  <span class="text-center font-bold">${aiCenterRate(item.rate)}</span>
+                  <span class="text-center text-[10px] font-semibold whitespace-nowrap">${formatDisclosureDate(item.disclosure_date || item.rate_month) || "-"}</span>
+                </div>`;
+          }).join("") || '<div class="text-gray-400 text-center py-4">시장 데이터 없음</div>'}
         </div>
       </div>
 
-      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] leading-5">
-        <div class="font-bold text-blue-700 mb-1">🧠 AI 시장 요약</div>
-        ${label} ${currentSelectedPeriod()}개월 금리와 공시일을 기준으로 상위권 경쟁과 우리금융 위치를 모니터링합니다.
+      <div class="bg-[#f6f9ff] border border-blue-100 rounded-xl px-3 py-2 text-[10.5px] leading-[1.5] text-gray-600 [word-break:keep-all]">
+        <div class="font-bold text-blue-700 mb-0.5">🧠 경쟁력 판단</div>
+        <b class="text-gray-800">우리금융 ${woori.market_rank ?? "-"}위 · ${aiCenterRate(woori.rate)}</b>.
+        ${altGap === null ? "시장 최고와의 Gap 확인이 필요합니다." : altGap === 0 ? "시장 최고금리와 동일한 수준입니다." : `시장 최고 대비 ${Math.abs(altGap).toFixed(2)}%p 낮습니다.`}
+        ${altAvgGap === null ? "" : altAvgGap > 0 ? ` 시장 평균 대비 +${altAvgGap.toFixed(2)}%p로 우위입니다.` : altAvgGap < 0 ? ` 시장 평균 대비 ${altAvgGap.toFixed(2)}%p입니다.` : " 시장 평균과 동일합니다."}
+        상위5 평균은 <b>${altTop5Avg!=null?altTop5Avg.toFixed(2)+"%":"-"}</b>,
+        당행보다 높은 기관은 <b>${altHigherCount}개</b>입니다.
       </div>
     </div>`;
 }
@@ -3821,6 +3910,10 @@ function renderAlternativeAIAnalysisCenter(tab,data){
 async function renderAIAnalysisCenter(tab){
     const target = document.getElementById("ai-center-content");
     if(!target) return;
+
+    target.classList.toggle("ai-market-compact", tab === "market");
+    target.style.overflowY = tab === "market" ? "hidden" : "auto";
+
     target.innerHTML = '<div class="py-10 text-center text-gray-400">분석 데이터를 불러오는 중입니다.</div>';
 
     const data = await loadAIAnalysisCenterData();
@@ -3871,14 +3964,14 @@ async function renderAIAnalysisCenter(tab){
               <span class="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded-full">우리금융 ${Number(financialRank) > 0 ? financialRank : "-"}위</span>
             </div>
             <div class="grid grid-cols-[34px_1fr_62px_70px] gap-2 px-2 pb-1 text-[10px] text-gray-400 text-center">
-              <span>순위</span><span class="text-left">저축은행</span><span>금리</span><span>전일比</span>
+              <span>순위</span><span>저축은행</span><span>금리</span><span>전일比</span>
             </div>
             <div class="space-y-1">
               ${financial.map(item=>{
                   const isWoori = String(item.bank || "").includes("우리금융");
-                  return `<div class="grid grid-cols-[34px_1fr_62px_70px] gap-2 items-center rounded-lg px-2 py-1.5 ${isWoori ? "bg-blue-50 border border-blue-100 text-blue-700 font-bold" : "bg-gray-50"}">
+                  return `<div class="grid grid-cols-[34px_1fr_62px_70px] gap-2 items-center rounded-lg px-2 py-1.5 ${isWoori ? "woori-highlight-row font-bold" : "bg-gray-50"}">
                     <span class="text-center">${item.rank ?? "-"}</span>
-                    <span class="truncate">${displayBankName(item.bank ?? "-")}</span>
+                    <span class="truncate text-center">${displayBankName(item.bank ?? "-")}</span>
                     <span class="font-bold text-center">${aiCenterRate(item.rate)}</span>
                     <span class="text-center">${aiCenterChange(item.change)}</span>
                   </div>`;
@@ -3899,23 +3992,289 @@ async function renderAIAnalysisCenter(tab){
     if(tab === "change"){
         const ups = Array.isArray(changes.up_top5)?changes.up_top5:[];
         const downs = Array.isArray(changes.down_top5)?changes.down_top5:[];
+        const upCount = Number(changes.up_count ?? ups.length ?? 0);
+        const downCount = Number(changes.down_count ?? downs.length ?? 0);
+        const totalCount = Number(changes.change_count ?? (upCount+downCount) ?? 0);
+
+        const strongestUp = [...ups]
+            .sort((a,b)=>Number(b.change??b.change_value??0)-Number(a.change??a.change_value??0))[0];
+        const strongestDown = [...downs]
+            .sort((a,b)=>Math.abs(Number(b.change??b.change_value??0))-Math.abs(Number(a.change??a.change_value??0)))[0];
+
+        const wooriMove = [...ups,...downs].find(item=>isWooriBank(item.bank));
+        const wooriChange = Number(wooriMove?.change ?? wooriMove?.change_value ?? 0);
+
+        const direction =
+            downCount > upCount ? "인하 우세" :
+            upCount > downCount ? "인상 우세" :
+            totalCount > 0 ? "혼조" : "변동 없음";
+
+        const directionText =
+            downCount > upCount
+                ? `하락 ${downCount}건이 상승 ${upCount}건보다 많아 시장 금리 조정은 인하 방향이 우세합니다.`
+                : upCount > downCount
+                    ? `상승 ${upCount}건이 하락 ${downCount}건보다 많아 일부 은행의 수신 경쟁 강화가 나타납니다.`
+                    : totalCount > 0
+                        ? `상승 ${upCount}건·하락 ${downCount}건으로 방향성이 엇갈리는 혼조 국면입니다.`
+                        : "전일 대비 금리 변동이 없어 시장 금리 수준은 유지되고 있습니다.";
+
+        const wooriText =
+            wooriMove
+                ? `우리금융은 ${wooriChange>0?"+"+wooriChange.toFixed(2):"▲"+Math.abs(wooriChange).toFixed(2)}%p 변동했습니다.`
+                : "우리금융은 금일 변동 목록에 없어 금리를 유지했습니다.";
+
         target.innerHTML = `
         <div class="space-y-3">
-          <div class="grid grid-cols-3 gap-2 text-center"><div class="bg-blue-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">상승</div><div class="text-lg font-bold text-blue-600">${changes.up_count ?? ups.length}</div></div><div class="bg-red-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">하락</div><div class="text-lg font-bold text-red-500">${changes.down_count ?? downs.length}</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">전체변동</div><div class="text-lg font-bold text-gray-700">${changes.change_count ?? 0}</div></div></div>
-          <div class="grid grid-cols-2 gap-2"><div class="border border-blue-100 rounded-xl p-2.5"><div class="font-bold text-blue-600 mb-2">📈 상승 TOP5</div><div class="space-y-1">${ups.length?ups.map(item=>`<div class="flex justify-between bg-blue-50/50 rounded px-2 py-1.5"><span class="truncate mr-2">${displayBankName(item.bank ?? "-")}</span><span>${aiCenterChange(item.change)}</span></div>`).join(""):'<div class="text-gray-400 py-4 text-center">상승 없음</div>'}</div></div><div class="border border-red-100 rounded-xl p-2.5"><div class="font-bold text-red-500 mb-2">📉 하락 TOP5</div><div class="space-y-1">${downs.length?downs.map(item=>`<div class="flex justify-between bg-red-50/50 rounded px-2 py-1.5"><span class="truncate mr-2">${displayBankName(item.bank ?? "-")}</span><span>${aiCenterChange(item.change)}</span></div>`).join(""):'<div class="text-gray-400 py-4 text-center">하락 없음</div>'}</div></div></div>
-          <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5"><div class="font-bold text-amber-800 mb-1">💡 변동 판단</div>전일 대비 실제 금리 변경 은행만 표시합니다. 변동이 없는 날에는 상승·하락 목록이 비어 있는 것이 정상입니다.</div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-gray-50 border border-gray-100 rounded-xl p-2.5">
+              <div class="text-[9px] text-gray-400">시장 방향</div>
+              <div class="text-sm font-bold text-gray-800">${direction}</div>
+            </div>
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-2.5">
+              <div class="text-[9px] text-gray-400">상승 / 하락</div>
+              <div class="text-sm font-bold"><span class="text-blue-600">${upCount}</span> / <span class="text-red-500">${downCount}</span></div>
+            </div>
+            <div class="bg-gray-50 border border-gray-100 rounded-xl p-2.5">
+              <div class="text-[9px] text-gray-400">전체 변동</div>
+              <div class="text-sm font-bold">${totalCount}건</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div class="border border-gray-100 rounded-xl p-3">
+              <div class="text-[10px] text-gray-400 mb-1">최대 상승</div>
+              ${strongestUp
+                  ? `<div class="font-bold text-gray-800">${displayBankName(strongestUp.bank)}</div>
+                     <div class="mt-1">${aiCenterRate(strongestUp.rate)} · ${aiCenterChange(strongestUp.change ?? strongestUp.change_value)}</div>`
+                  : '<div class="text-gray-400 py-2">상승 없음</div>'}
+            </div>
+            <div class="border border-gray-100 rounded-xl p-3">
+              <div class="text-[10px] text-gray-400 mb-1">최대 하락</div>
+              ${strongestDown
+                  ? `<div class="font-bold text-gray-800">${displayBankName(strongestDown.bank)}</div>
+                     <div class="mt-1">${aiCenterRate(strongestDown.rate)} · ${aiCenterChange(strongestDown.change ?? strongestDown.change_value)}</div>`
+                  : '<div class="text-gray-400 py-2">하락 없음</div>'}
+            </div>
+          </div>
+
+          <div class="bg-[#f6f9ff] border border-blue-100 rounded-xl p-3 text-[11px] leading-[1.55] text-gray-600 [word-break:keep-all]">
+            <div class="font-bold text-blue-700 mb-1">🧠 AI 변동 인사이트</div>
+            ${directionText}<br>
+            ${wooriText}
+            ${downCount>upCount ? " 상위금리권 인하가 이어질 경우 당행과 시장 상단의 Gap 축소 여부를 확인할 필요가 있습니다." : upCount>downCount ? " 경쟁사의 추가 인상 여부와 당행 경쟁력 변화를 점검할 필요가 있습니다." : ""}
+          </div>
         </div>`;
         return;
     }
 
     const summary = Array.isArray(data.ai.summary)?data.ai.summary:[];
+    const topRate = Number(rates?.[0]?.rate ?? kpi.max_rate ?? kpi.highest_rate);
+    const wooriRateValue = Number(woori.rate);
+    const gapToTopValue =
+        Number.isFinite(topRate) && Number.isFinite(wooriRateValue)
+            ? wooriRateValue - topRate
+            : null;
+
+    const marketInsight =
+        Number.isFinite(wooriRateValue)
+            ? `우리금융 ${woori.market_rank ?? "-"}위 · ${wooriRateValue.toFixed(2)}%. `
+              + (
+                  gapToTopValue === null
+                      ? "시장 최고와의 Gap을 확인 중입니다."
+                      : gapToTopValue === 0
+                          ? "시장 최고금리와 동일한 수준입니다."
+                          : `시장 최고 대비 ${Math.abs(gapToTopValue).toFixed(2)}%p 낮습니다.`
+                )
+              + ` 전일 변동 ${changes.change_count ?? kpi.change_count ?? 0}건을 함께 점검합니다.`
+            : "우리금융 금리와 시장 상단 Gap을 확인 중입니다.";
+
     target.innerHTML = `
-    <div class="space-y-3">
-      <div class="grid grid-cols-2 gap-2 text-center"><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">시장 평균</div><div class="text-base font-bold">${aiCenterRate(kpi.average_rate)}</div></div><div class="bg-blue-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">최고금리</div><div class="text-base font-bold text-blue-700">${aiCenterRate(kpi.max_rate ?? kpi.highest_rate)}</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">상품수</div><div class="text-base font-bold">${Number(kpi.product_count || 0).toLocaleString()}개</div></div><div class="bg-gray-50 rounded-lg p-2"><div class="text-[10px] text-gray-400">금리변동</div><div class="text-base font-bold">${changes.change_count ?? kpi.change_count ?? 0}건</div></div></div>
-      <div class="border border-gray-100 rounded-xl p-3"><div class="font-bold text-gray-700 mb-2">🏆 시장 TOP5</div><div class="space-y-1.5">${rates.slice(0,5).map(item=>`<div class="flex justify-between bg-gray-50 rounded-lg px-2.5 py-2"><span>${item.rank ?? "-"}. ${displayBankName(item.bank ?? "-")}</span><span class="font-bold">${aiCenterRate(item.rate)}</span></div>`).join("") || '<div class="text-gray-400 text-center py-4">시장 데이터 없음</div>'}</div></div>
-      <div class="bg-blue-50 border border-blue-100 rounded-xl p-3"><div class="font-bold text-blue-700 mb-1">🧠 AI 시장 요약</div><div class="text-[11px] text-gray-600 leading-5">${summary.slice(0,4).join("<br>") || "시장 데이터를 기준으로 금리 수준과 경쟁 강도를 모니터링하고 있습니다."}</div></div>
-      <div class="bg-amber-50 border border-amber-100 rounded-xl p-3 text-[11px] text-gray-600 leading-5"><div class="font-bold text-amber-800 mb-1">🎯 오늘의 체크포인트</div>최고금리와 평균금리의 움직임, 상위권 경쟁사 조정, 우리금융 시장순위 변화를 함께 확인합니다.</div>
+    <div class="space-y-2.5">
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-blue-50 border border-blue-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">우리금융 금리</div>
+          <div class="text-sm font-bold text-blue-700">${aiCenterRate(woori.rate)}</div>
+        </div>
+        <div class="bg-gray-50 border border-gray-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">시장순위</div>
+          <div class="text-sm font-bold">${woori.market_rank ?? "-"}위</div>
+        </div>
+        <div class="bg-gray-50 border border-gray-100 rounded-xl p-2">
+          <div class="text-[9px] text-gray-400">최고금리 Gap</div>
+          <div class="text-sm font-bold">${gapToTopValue === null ? "-" : aiCenterGap(gapToTopValue)}</div>
+        </div>
+      </div>
+
+      <div class="border border-gray-100 rounded-xl p-2.5">
+        <div class="font-bold text-gray-700 mb-1.5">🏆 시장 TOP5</div>
+
+        <div class="grid grid-cols-[38px_1fr_66px] gap-2 px-2 pb-1 text-[9px] text-gray-400 text-center">
+          <span>순위</span><span>저축은행</span><span>금리</span>
+        </div>
+
+        <div class="space-y-1">
+          ${rates.slice(0,5).map(item=>{
+              const isWoori = isWooriBank(item.bank);
+              return `<div class="grid grid-cols-[38px_1fr_66px] gap-2 items-center px-2 py-1.5
+                ${isWoori ? "woori-highlight-row font-bold" : "bg-gray-50 rounded-lg"}">
+                <span class="text-center">${item.rank ?? "-"}</span>
+                <span class="text-center truncate">${displayBankName(item.bank ?? "-")}</span>
+                <span class="text-center font-bold">${aiCenterRate(item.rate)}</span>
+              </div>`;
+          }).join("") || '<div class="text-gray-400 text-center py-4">시장 데이터 없음</div>'}
+        </div>
+      </div>
+
+      <div class="bg-[#f6f9ff] border border-blue-100 rounded-xl px-3 py-2 text-[10.5px] text-gray-600 leading-[1.4] [word-break:keep-all]">
+        <div class="font-bold text-blue-700 mb-0.5">🧠 판단 포인트</div>
+        ${marketInsight}
+      </div>
     </div>`;
+
+}
+
+
+
+function enableDraggableModal(modalId){
+    const overlay=document.getElementById(modalId);
+    if(!overlay || overlay.dataset.dragReady==="1") return;
+
+    const panel=overlay.firstElementChild;
+    const handle=panel?.querySelector(".modal-drag-handle");
+    if(!panel || !handle) return;
+
+    overlay.dataset.dragReady="1";
+    panel.classList.add("modal-drag-panel");
+
+    let dragging=false, startX=0, startY=0, baseX=0, baseY=0;
+
+    const reset=()=>{
+        baseX=0; baseY=0;
+        panel.style.transform="translate(0px, 0px)";
+    };
+
+    const originalObserver=new MutationObserver(()=>{
+        if(!overlay.classList.contains("hidden")) reset();
+    });
+    originalObserver.observe(overlay,{attributes:true,attributeFilter:["class"]});
+
+    handle.addEventListener("mousedown",e=>{
+        if(e.button!==0 || e.target.closest("button,input,select,a")) return;
+        dragging=true;
+        startX=e.clientX-baseX;
+        startY=e.clientY-baseY;
+        document.body.style.userSelect="none";
+        e.preventDefault();
+    });
+
+    window.addEventListener("mousemove",e=>{
+        if(!dragging) return;
+        const rect=panel.getBoundingClientRect();
+        let nx=e.clientX-startX;
+        let ny=e.clientY-startY;
+
+        const maxX=Math.max(0,(window.innerWidth-panel.offsetWidth)/2-12);
+        const maxY=Math.max(0,(window.innerHeight-panel.offsetHeight)/2-12);
+
+        nx=Math.max(-maxX,Math.min(maxX,nx));
+        ny=Math.max(-maxY,Math.min(maxY,ny));
+
+        baseX=nx; baseY=ny;
+        panel.style.transform=`translate(${nx}px, ${ny}px)`;
+    });
+
+    window.addEventListener("mouseup",()=>{
+        if(!dragging) return;
+        dragging=false;
+        document.body.style.userSelect="";
+    });
+}
+
+function initDraggableModals(){
+    [
+        "ai-center-detail-modal",
+        "ai-report-modal",
+        "market-detail-modal",
+        "ai-detail-modal",
+        "error-report-modal"
+    ].forEach(enableDraggableModal);
+}
+
+
+
+function initErrorReportCenter(){
+    const openBtn=document.getElementById("error-report-open");
+    const modal=document.getElementById("error-report-modal");
+    const closeBtn=document.getElementById("error-report-close");
+    const cancelBtn=document.getElementById("error-report-cancel");
+    const form=document.getElementById("error-report-form");
+    const productInput=document.getElementById("error-report-product");
+    const typeInput=document.getElementById("error-report-type");
+    const messageInput=document.getElementById("error-report-message");
+    const status=document.getElementById("error-report-status");
+
+    if(!modal || !form) return;
+
+    const close=()=>{
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+    };
+
+    const open=()=>{
+        if(productInput) productInput.value=`${marketProductLabel()} · ${currentSelectedPeriod()}개월`;
+        if(status) status.textContent="";
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        setTimeout(()=>messageInput?.focus(),30);
+    };
+
+    openBtn?.addEventListener("click",open);
+    closeBtn?.addEventListener("click",close);
+    cancelBtn?.addEventListener("click",close);
+    modal.addEventListener("click",e=>{if(e.target===modal) close();});
+
+    form.addEventListener("submit",async e=>{
+        e.preventDefault();
+        const message=String(messageInput?.value || "").trim();
+        if(!message){
+            if(status){status.className="text-xs text-red-500";status.textContent="오류 내용을 입력해주세요.";}
+            return;
+        }
+
+        if(status){status.className="text-xs text-gray-400";status.textContent="제보를 등록하고 있습니다...";}
+
+        try{
+            const response=await fetch("/api/error-report",{
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    category:activeMarketProduct,
+                    product:marketProductLabel(),
+                    period:currentSelectedPeriod(),
+                    error_type:typeInput?.value || "기타",
+                    message,
+                    page_url:location.href,
+                    user_agent:navigator.userAgent
+                })
+            });
+
+            const data=await response.json();
+            if(!response.ok || !data?.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+
+            if(status){
+                status.className="text-xs text-emerald-600 font-semibold";
+                status.textContent=`접수 완료 · ${data.id}`;
+            }
+            if(messageInput) messageInput.value="";
+            setTimeout(close,900);
+        }catch(error){
+            console.error("ERROR REPORT SUBMIT ERROR:",error);
+            if(status){
+                status.className="text-xs text-red-500";
+                status.textContent="등록에 실패했습니다. 잠시 후 다시 시도해주세요.";
+            }
+        }
+    });
 }
 
 
@@ -3982,7 +4341,7 @@ async function handleAISearch(event){
             method:"POST",
             headers:{"Content-Type":"application/json"},
             body:JSON.stringify({
-                question: question,
+                question: apiQuestion,
                 category: activeMarketProduct,
                 period: currentSelectedPeriod()
             })
@@ -4259,9 +4618,11 @@ async function loadHero(){
 
     try {
 
-        const res = await fetch("/api/woori");
+        const data = await apiFetch("/api/woori");
 
-        const data = await res.json();
+        if(!data){
+            return;
+        }
 
 
         // 시장순위

@@ -77,6 +77,317 @@
   }
 </style>
 
+
+<style>
+  .modal-drag-panel { position: relative; will-change: transform; }
+  .modal-drag-handle button { cursor: pointer; }
+  #ai-analysis-center.ai-syncing { opacity: 0; }
+  #ai-analysis-center { transition: opacity .08s ease; }
+  #ai-center-content.ai-market-compact .space-y-3 { gap: .45rem !important; }
+  #ai-center-content.ai-market-compact .p-3 { padding: .55rem !important; }
+  #ai-center-content.ai-market-compact .p-2 { padding: .42rem !important; }
+  #ai-center-content.ai-market-compact .py-1\.5 { padding-top: .28rem !important; padding-bottom: .28rem !important; }
+  #ai-center-content.ai-market-compact .leading-5 { line-height: 1.25rem !important; }
+  .woori-highlight-row {
+    background:#eff6ff !important;
+    color:#1d4ed8 !important;
+    border:1px solid #bfdbfe !important;
+    border-radius:12px !important;
+    padding-left:.65rem !important;
+    padding-right:.65rem !important;
+  }
+  .woori-highlight-row * { color:#1d4ed8 !important; }
+</style>
+
+
+<style>
+  /* V5.10 common Woori highlight */
+  .woori-highlight-row {
+    background:#eff6ff !important;
+    color:#1d4ed8 !important;
+    border:1px solid #bfdbfe !important;
+    border-radius:14px !important;
+    padding-left:.85rem !important;
+    padding-right:.85rem !important;
+    box-sizing:border-box !important;
+  }
+  .woori-highlight-row * { color:#1d4ed8 !important; }
+
+  /* AI panel does not animate its size. Prevent long -> short flicker. */
+  #ai-analysis-center {
+    transition:none !important;
+    overflow:hidden !important;
+  }
+  #ai-analysis-center.ai-syncing { visibility:hidden; opacity:0; }
+  #ai-analysis-center.ai-synced { visibility:visible; opacity:1; }
+
+  #ai-center-content.ai-market-compact .space-y-3 { gap:.35rem !important; }
+  #ai-center-content.ai-market-compact .p-3 { padding:.48rem !important; }
+  #ai-center-content.ai-market-compact .p-2 { padding:.36rem !important; }
+  #ai-center-content.ai-market-compact .py-1\.5 { padding-top:.22rem !important; padding-bottom:.22rem !important; }
+
+  /* top header tabs */
+  #market-product-tabs { flex-shrink:0; }
+</style>
+
+
+<style id="v511-executive-polish">
+  :root{
+    --sb-blue:#1556c0;
+    --sb-blue-deep:#0f3f96;
+    --sb-ink:#172033;
+    --sb-muted:#718096;
+    --sb-line:#e7edf5;
+    --sb-surface:#ffffff;
+    --sb-bg:#f4f7fb;
+  }
+
+  html{ background:var(--sb-bg); }
+  body{
+    background:
+      radial-gradient(circle at 12% -10%, rgba(21,86,192,.055), transparent 26rem),
+      linear-gradient(180deg,#f7f9fc 0%,#f3f6fa 100%);
+    color:var(--sb-ink);
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  body > header{
+    background:rgba(255,255,255,.94) !important;
+    backdrop-filter:blur(14px);
+    border-bottom:1px solid #e9eef6 !important;
+    box-shadow:0 2px 14px rgba(15,23,42,.035);
+  }
+
+  /* Card system */
+  #dashboard-hero-start > .col-span-4 > .bg-white,
+  main > .bg-white,
+  #market-ranking-row > .bg-white,
+  #ai-analysis-center,
+  #product-search-panel{
+    border-color:var(--sb-line) !important;
+    border-radius:18px !important;
+    box-shadow:
+      0 1px 2px rgba(15,23,42,.025),
+      0 8px 26px rgba(15,23,42,.035) !important;
+  }
+
+  #dashboard-hero-start > .col-span-4:first-child > .bg-white{
+    background:
+      linear-gradient(145deg,rgba(239,246,255,.88),rgba(255,255,255,.97) 52%) !important;
+    border-color:#dbe8fb !important;
+  }
+
+  #dashboard-hero-start > .col-span-4:last-child > .bg-white{
+    background:
+      linear-gradient(145deg,#fffdf7,#ffffff 58%) !important;
+    border-color:#f1e8cf !important;
+  }
+
+  #ai-analysis-center{
+    background:
+      linear-gradient(180deg,#ffffff 0%,#fbfdff 100%) !important;
+    align-self:stretch !important;
+  }
+
+  #ai-analysis-center.ai-syncing,
+  #ai-analysis-center.ai-synced{
+    visibility:visible !important;
+    opacity:1 !important;
+  }
+
+  /* Compact market tab */
+  #ai-center-content.ai-market-compact{
+    overflow:hidden !important;
+  }
+  #ai-center-content.ai-market-compact .space-y-2\.5{
+    gap:.55rem !important;
+  }
+
+  /* Stronger hierarchy */
+  #dashboard-hero-start .text-sm.font-bold,
+  #market-ranking-row .text-xs.font-bold,
+  #ai-analysis-center h2{
+    letter-spacing:-.015em;
+  }
+
+  #market-ranking-row table{
+    border-collapse:separate;
+    border-spacing:0;
+  }
+  #market-ranking-row thead th{
+    font-size:10px;
+    letter-spacing:.015em;
+    color:#8b96a8 !important;
+  }
+  #market-ranking-row tbody td{
+    vertical-align:middle;
+  }
+
+  /* One Woori style everywhere */
+  .woori-highlight-row{
+    width:100% !important;
+    background:linear-gradient(90deg,#edf5ff 0%,#f3f8ff 100%) !important;
+    color:#1556c0 !important;
+    border:1px solid #a9cdfd !important;
+    border-radius:14px !important;
+    padding-left:.8rem !important;
+    padding-right:.8rem !important;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);
+    box-sizing:border-box !important;
+    text-align:center !important;
+  }
+  .woori-highlight-row > *{
+    color:#1556c0 !important;
+    text-align:center !important;
+    justify-self:stretch;
+  }
+
+  /* AI workspace */
+  #ai-question{
+    background:#fff;
+    border-color:#dce4ef;
+  }
+  #ai-question:focus{
+    box-shadow:0 0 0 3px rgba(21,86,192,.08);
+  }
+  #ai-mini-answer{
+    color:#344054;
+  }
+
+  /* Product explorer */
+  #product-search-panel > div:first-child{
+    background:linear-gradient(90deg,#fff 0%,#f5f9ff 100%) !important;
+  }
+  #product-search-panel select,
+  #product-search-panel input{
+    border-color:#dce4ef !important;
+    background:#fff !important;
+  }
+  #product-table th{
+    color:#7c8798 !important;
+    font-size:10px;
+    letter-spacing:.015em;
+  }
+  #product-table td{
+    vertical-align:middle;
+  }
+
+  button{
+    transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+  }
+
+  @media (max-width: 1500px){
+    body > header{ padding-left:1rem !important; padding-right:1rem !important; }
+    body > div.p-6{ padding:1rem !important; gap:1rem !important; }
+    #dashboard-hero-start{ gap:.75rem !important; }
+    #market-ranking-row{ gap:.75rem !important; }
+    #ai-analysis-center{ padding:1rem !important; }
+  }
+</style>
+
+
+<style id="v5112-final-qa">
+  /* 우리금융 강조는 일반 행과 동일한 table column을 그대로 사용 */
+  tr.woori-table-row > td.woori-table-cell{
+    background:linear-gradient(90deg,#edf5ff 0%,#f3f8ff 100%) !important;
+    color:#1556c0 !important;
+    border-top:1px solid #a9cdfd !important;
+    border-bottom:1px solid #a9cdfd !important;
+  }
+  tr.woori-table-row > td.woori-table-first{
+    border-left:1px solid #a9cdfd !important;
+    border-top-left-radius:14px !important;
+    border-bottom-left-radius:14px !important;
+    padding-left:0 !important;
+    padding-right:0 !important;
+  }
+  tr.woori-table-row > td.woori-table-last{
+    border-right:1px solid #a9cdfd !important;
+    border-top-right-radius:14px !important;
+    border-bottom-right-radius:14px !important;
+    padding-left:0 !important;
+    padding-right:0 !important;
+  }
+
+  /* ISA/IRP TOP10/최근공시: 모든 컬럼 정확히 동일한 중심선 */
+  #top5-table-body td,
+  #top10-table-body td,
+  #rates-up-list td{
+    vertical-align:middle !important;
+  }
+
+  /* 작은 화면에서도 공시일이 테두리에 닿지 않게 */
+  @media (max-width:1500px){
+    tr.woori-table-row > td.woori-table-last{
+      font-size:10px !important;
+    }
+  }
+</style>
+
+
+<style id="v5113-woori-column-alignment">
+  /* 일반행과 우리금융 강조행의 실제 column center를 완전히 동일하게 유지 */
+  #top5-table-body tr.woori-table-row > td,
+  #top10-table-body tr.woori-table-row > td,
+  #rates-up-list tr.woori-table-row > td{
+    padding-left:0 !important;
+    padding-right:0 !important;
+    text-align:center !important;
+  }
+
+  #top5-table-body tr.woori-table-row > td:first-child > span,
+  #top10-table-body tr.woori-table-row > td:first-child > span{
+    margin-left:0 !important;
+    margin-right:0 !important;
+    transform:none !important;
+  }
+</style>
+
+
+<style id="v5115-dashboard-stable-safe-outline">
+  /*
+   * Final safe polish:
+   * 일반행과 동일한 실제 table column은 그대로 유지.
+   * 우리금융 강조행의 바깥 여백만 줄여 오른쪽 테두리가 자연스럽게 더 길어 보이게 한다.
+   * ::after 등 가상요소 사용 없음.
+   */
+  #top5-table-body tr.woori-table-row,
+  #top10-table-body tr.woori-table-row,
+  #rates-up-list tr.woori-table-row{
+    position:relative;
+  }
+
+  #top5-table-body tr.woori-table-row > td,
+  #top10-table-body tr.woori-table-row > td,
+  #rates-up-list tr.woori-table-row > td{
+    background-clip:padding-box !important;
+  }
+
+  /* 마지막 셀 오른쪽 안쪽 여백만 확보해 날짜 뒤가 답답하지 않게 */
+  #top5-table-body tr.woori-table-row > td.woori-table-last,
+  #top10-table-body tr.woori-table-row > td.woori-table-last,
+  #rates-up-list tr.woori-table-row > td.woori-table-last{
+    padding-right:.75rem !important;
+  }
+
+  /* 첫 셀은 기존 중심선 유지 */
+  #top5-table-body tr.woori-table-row > td.woori-table-first,
+  #top10-table-body tr.woori-table-row > td.woori-table-first,
+  #rates-up-list tr.woori-table-row > td.woori-table-first{
+    padding-left:0 !important;
+    padding-right:0 !important;
+  }
+
+  /* 노트북에서도 공시일이 한 줄 유지 */
+  #top5-table-body tr.woori-table-row > td.woori-table-last,
+  #top10-table-body tr.woori-table-row > td.woori-table-last,
+  #rates-up-list tr.woori-table-row > td.woori-table-last{
+    white-space:nowrap !important;
+    overflow:visible !important;
+  }
+</style>
+
 </head>
 <body class="bg-[#f4f6f9] text-gray-800 font-sans min-h-screen">
 
@@ -95,14 +406,29 @@
       </h1>
     </div>
 
-    <div class="flex items-center gap-4 text-xs text-gray-500">
-      <div class="flex items-center gap-1.5">
+    <div class="flex items-center gap-3 text-xs text-gray-500">
+      <div id="market-product-tabs" class="inline-flex items-center gap-1 bg-[#f4f7fb] border border-gray-100 rounded-xl p-1">
+        <button type="button" data-market-product="deposit" class="market-product-tab bg-[#1a58c8] text-white px-4 py-1.5 rounded-lg text-[11px] font-bold shadow-sm">정기예금</button>
+        <button type="button" data-market-product="isa" class="market-product-tab text-gray-500 px-4 py-1.5 rounded-lg text-[11px] font-semibold hover:bg-white hover:text-blue-700">ISA</button>
+        <button type="button" data-market-product="irp" class="market-product-tab text-gray-500 px-4 py-1.5 rounded-lg text-[11px] font-semibold hover:bg-white hover:text-blue-700">퇴직연금(IRP)</button>
+      </div>
+
+      <span id="dashboard-market-label" class="hidden xl:inline-flex items-center bg-[#eef5ff] border border-blue-100 text-blue-800 text-[10px] px-3 py-1.5 rounded-full font-bold whitespace-nowrap">
+        📌 저축은행 정기예금(12개월) 시장현황
+      </span>
+
+      <button id="error-report-open" type="button"
+        class="inline-flex items-center gap-1 border border-gray-200 bg-white hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap">
+        🛠 오류 제보
+      </button>
+
+      <div class="flex items-center gap-1.5 whitespace-nowrap">
         <span>⏱️ 데이터 기준</span>
         <span id="header-data-update-time" class="font-semibold text-gray-700 whitespace-nowrap">-</span>
         <span id="header-data-status" class="hidden px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap">-</span>
         <button id="header-refresh-btn" type="button" title="데이터 새로고침" class="hover:rotate-180 transition-transform duration-300 ml-1">🔄</button>
       </div>
-      <div id="header-current-datetime" title="현재 시각">-</div>
+      <div id="header-current-datetime" title="현재 시각" class="whitespace-nowrap">-</div>
     </div>
   </header>
 
@@ -111,18 +437,6 @@
 
     <!-- 좌측 메인 영역 (9컬럼) -->
     <main class="col-span-9 space-y-5">
-
-      <!-- 상품군 전환 -->
-      <div class="flex items-center justify-start gap-3 flex-wrap">
-        <div id="market-product-tabs" class="inline-flex shadow-sm items-center gap-1 bg-white border border-gray-100 rounded-xl p-1 shadow-sm">
-          <button type="button" data-market-product="deposit" class="market-product-tab bg-[#1a58c8] text-white px-4 py-2 rounded-lg text-xs font-bold shadow-sm">정기예금</button>
-          <button type="button" data-market-product="isa" class="market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700">ISA</button>
-          <button type="button" data-market-product="irp" class="market-product-tab text-gray-500 px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-50 hover:text-blue-700">퇴직연금(IRP)</button>
-        </div>
-        <span id="dashboard-market-label" class="bg-[#eef5ff] border border-blue-200 text-blue-800 text-[11px] px-3 py-2 rounded-lg font-bold shadow-sm whitespace-nowrap">
-          📌 저축은행 정기예금(12개월) 시장현황
-        </span>
-      </div>
 
 <!-- ======================================================
      EXECUTIVE SUMMARY TOP SECTION
@@ -816,7 +1130,7 @@ class="text-xs text-gray-600 leading-5">
     </main>
 
     <!-- 우측 AI 분석센터 패널 (3컬럼) -->
-    <aside id="ai-analysis-center" class="col-span-3 min-w-0 w-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4 overflow-hidden flex flex-col self-start">
+    <aside id="ai-analysis-center" class="col-span-3 min-w-0 w-full h-full bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4 overflow-hidden flex flex-col">
       <div class="flex justify-between items-center border-b pb-3">
         <div>
           <h2 class="font-bold text-sm text-gray-900 flex items-center gap-1">💬 AI 분석센터</h2>
@@ -831,7 +1145,7 @@ class="text-xs text-gray-600 leading-5">
         <button type="button" data-ai-center-tab="change" class="ai-center-tab text-gray-500 rounded-md py-1.5 hover:text-blue-600">변동분석</button>
       </div>
 
-      <div id="ai-center-content" class="text-xs flex-1 min-h-0 overflow-y-auto pr-1">
+      <div id="ai-center-content" class="text-xs flex-1 min-h-0 overflow-hidden pr-1">
         <div class="py-10 text-center text-gray-400">AI 분석 데이터를 불러오는 중입니다.</div>
       </div>
 
@@ -843,14 +1157,18 @@ class="text-xs text-gray-600 leading-5">
 
     <section id="fullwidth-product-row" class="col-span-12">
       <!-- 하단 전체 상품 조회 검색 영역 -->
-      <div id="product-search-panel" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm space-y-3">
-        <div class="flex justify-between items-center gap-3">
-          <div class="text-xs font-bold text-gray-800 flex items-center gap-1">
-            🔍 전체 상품 조회
-            <span id="product-result-count" class="text-gray-400 font-normal ml-2">데이터 로딩 중</span>
+      <div id="product-search-panel" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-[#f7faff] flex justify-between items-center gap-3">
+          <div>
+            <div class="text-[10px] tracking-[0.12em] text-blue-500 font-semibold">PRODUCT EXPLORER</div>
+            <div class="text-sm font-bold text-gray-900 mt-0.5 flex items-center gap-2">
+              전체 상품 조회
+              <span id="product-result-count" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-semibold">데이터 로딩 중</span>
+            </div>
           </div>
           <span id="product-panel-caption" class="text-[10px] text-gray-400">정기예금 전체 기간 조회</span>
         </div>
+        <div class="p-4 space-y-3">
 
         <div class="grid grid-cols-12 gap-3">
           <select id="product-bank-select" class="col-span-3 border border-gray-300 rounded-lg p-2 text-xs text-gray-600 focus:outline-none focus:border-blue-500">
@@ -881,7 +1199,7 @@ class="text-xs text-gray-600 leading-5">
                 <tr>
                   <th class="py-2 font-normal text-center w-[8%]">순위</th>
                   <th class="py-2 font-normal text-center w-[20%]">저축은행</th>
-                  <th class="py-2 font-normal text-left w-[34%]">상품명</th>
+                  <th class="py-2 font-normal text-center w-[34%]">상품명</th>
                   <th class="py-2 font-normal text-center w-[12%]">기간</th>
                   <th class="py-2 font-normal text-center w-[13%]">금리</th>
                   <th id="product-last-header" class="py-2 font-normal text-center w-[13%]">전일比</th>
@@ -892,6 +1210,7 @@ class="text-xs text-gray-600 leading-5">
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       </div>
 
@@ -915,7 +1234,7 @@ class="text-xs text-gray-600 leading-5">
   ====================================================== -->
   <div id="ai-center-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[65] px-4">
     <div class="bg-white w-full max-w-[920px] max-h-[90vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
-      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+      <div class="modal-drag-handle flex justify-between items-center px-5 py-3 border-b border-gray-100 cursor-move select-none">
         <div>
           <h3 id="ai-center-detail-title" class="text-sm font-bold text-gray-900">📊 AI 상세 분석</h3>
           <span id="ai-center-detail-subtitle" class="text-[10px] text-blue-600">선택한 분석 탭의 실제 데이터를 심층 분석합니다.</span>
@@ -933,7 +1252,7 @@ class="text-xs text-gray-600 leading-5">
   ====================================================== -->
   <div id="ai-report-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-[60] px-4">
     <div class="bg-white w-full max-w-[760px] max-h-[88vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
-      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+      <div class="modal-drag-handle flex justify-between items-center px-5 py-3 border-b border-gray-100 cursor-move select-none">
         <div>
           <h3 class="text-sm font-bold text-gray-900">📄 임원 보고서 · Executive Report</h3>
           <span class="text-[10px] text-blue-600">정기예금 시장 · 금융지주 저축은행 · 변동현황 종합</span>
@@ -956,7 +1275,7 @@ class="text-xs text-gray-600 leading-5">
   ====================================================== -->
   <div id="market-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
     <div class="bg-white w-full max-w-[620px] max-h-[88vh] rounded-2xl shadow-2xl border border-amber-100 overflow-hidden">
-      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+      <div class="modal-drag-handle flex justify-between items-center px-5 py-3 border-b border-gray-100 cursor-move select-none">
         <div>
           <h3 class="text-sm font-bold text-gray-900">📈 시장 상세 분석</h3>
           <span class="text-[10px] text-amber-600">Market Intelligence Detail</span>
@@ -976,7 +1295,7 @@ class="text-xs text-gray-600 leading-5">
   <div id="ai-detail-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50 px-4">
     <div class="bg-white w-full max-w-[620px] max-h-[88vh] rounded-2xl shadow-2xl border border-blue-100 overflow-hidden">
 
-      <div class="flex justify-between items-center px-5 py-3 border-b border-gray-100">
+      <div class="modal-drag-handle flex justify-between items-center px-5 py-3 border-b border-gray-100 cursor-move select-none">
         <div>
           <h3 class="text-sm font-bold text-gray-900">📊 AI 상세 분석</h3>
           <span class="text-[10px] text-blue-600">Executive Market Insight</span>
@@ -1270,6 +1589,59 @@ class="text-xs text-gray-600 leading-5">
 
 })();
 </script>
+
+
+<!-- =========================================================
+     ERROR REPORT CENTER
+========================================================= -->
+<div id="error-report-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/35 p-4">
+  <div class="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+    <div class="modal-drag-handle flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-white to-blue-50 cursor-move select-none" title="이 영역을 드래그해 창을 이동할 수 있습니다.">
+      <div>
+        <div class="text-[10px] tracking-[0.12em] text-blue-500 font-semibold">SBRateBot FEEDBACK</div>
+        <div class="font-bold text-gray-900 mt-0.5">오류 제보센터</div>
+      </div>
+      <button id="error-report-close" type="button" class="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+    </div>
+
+    <form id="error-report-form" class="p-5 space-y-4">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] text-gray-500 mb-1">현재 상품</label>
+          <input id="error-report-product" readonly class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-700" />
+        </div>
+        <div>
+          <label class="block text-[11px] text-gray-500 mb-1">오류 유형</label>
+          <select id="error-report-type" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs">
+            <option value="데이터 오류">데이터 오류</option>
+            <option value="화면/레이아웃">화면/레이아웃</option>
+            <option value="AI 답변">AI 답변</option>
+            <option value="속도/접속">속도/접속</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-[11px] text-gray-500 mb-1">오류 내용</label>
+        <textarea id="error-report-message" rows="5" required
+          placeholder="어떤 화면에서 무엇이 이상했는지 적어주세요."
+          class="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs resize-none focus:outline-none focus:border-blue-400"></textarea>
+      </div>
+
+      <div class="bg-gray-50 rounded-xl px-3 py-2 text-[10px] text-gray-400 leading-5">
+        선택 상품, 화면 URL, 발생 시각, 브라우저 정보가 자동으로 함께 저장됩니다.
+      </div>
+
+      <div id="error-report-status" class="text-xs"></div>
+
+      <div class="flex justify-end gap-2">
+        <button id="error-report-cancel" type="button" class="px-4 py-2 rounded-lg border border-gray-200 text-xs text-gray-600">취소</button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-[#1a58c8] text-white text-xs font-semibold">제보 등록</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 </body>
 </html>
